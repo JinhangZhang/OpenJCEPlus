@@ -1,5 +1,5 @@
 /*
- * Copyright IBM Corp. 2023
+ * Copyright IBM Corp. 2024
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -17,6 +17,8 @@ import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.SignatureSpi;
 import java.security.spec.AlgorithmParameterSpec;
+import java.security.spec.RSAKeyGenParameterSpec;
+
 import com.ibm.crypto.plus.provider.RSAUtil.KeyType;
 import com.ibm.crypto.plus.provider.ock.Signature;
 
@@ -47,6 +49,23 @@ abstract class RSASignature extends SignatureSpi {
             throw new InvalidKeyException("Key is not an RSAPublicKey");
         }
 
+        try {
+            if (provider.isFIPS()) {
+                RSAKeyFactory.checkKeyLengths(((java.security.interfaces.RSAPublicKey) publicKey).getModulus().bitLength(),
+                        RSAKeyGenParameterSpec.F4,
+                        RSAKeyFactory.MIN_MODLEN_FIPS_PUB,
+                        64 * 1024,
+                        RSAKeyFactory.ALLOWABLE_MODLEN_FIPS_VERIFY);
+            } else {
+                RSAKeyFactory.checkKeyLengths(((java.security.interfaces.RSAPublicKey) publicKey).getModulus().bitLength(),
+                        RSAKeyGenParameterSpec.F4,
+                        RSAKeyFactory.MIN_MODLEN_NONFIPS,
+                        64 * 1024);
+            }
+
+        } catch (InvalidKeyException e) {
+            throw new InvalidParameterException(e.getMessage());
+        }
 
         RSAPublicKey rsaPublic = (RSAPublicKey) RSAKeyFactory.toRSAKey(provider, publicKey);
         try {
@@ -82,6 +101,23 @@ abstract class RSASignature extends SignatureSpi {
 
         if (!(privateKey instanceof java.security.interfaces.RSAPrivateKey)) {
             throw new InvalidKeyException("Key is not an RSAPrivateKey");
+        }
+
+        try {
+            if (provider.isFIPS()) {
+                RSAKeyFactory.checkKeyLengths(((java.security.interfaces.RSAPrivateKey) privateKey).getModulus().bitLength(),
+                        RSAKeyGenParameterSpec.F4,
+                        RSAKeyFactory.MIN_MODLEN_FIPS,
+                        64 * 1024,
+                        RSAKeyFactory.ALLOWABLE_MODLEN_FIPS_SIGN);
+            } else {
+                RSAKeyFactory.checkKeyLengths(((java.security.interfaces.RSAPrivateKey) privateKey).getModulus().bitLength(),
+                        RSAKeyGenParameterSpec.F4,
+                        RSAKeyFactory.MIN_MODLEN_NONFIPS,
+                        64 * 1024);
+            }
+        } catch (InvalidKeyException e) {
+            throw new InvalidParameterException(e.getMessage());
         }
 
         //RSAPrivateCrtKey rsaPrivate = (RSAPrivateCrtKey) RSAKeyFactory.toRSAKey(provider, privateKey);
