@@ -29,7 +29,7 @@ import junit.framework.TestSuite;
         TestDHInteropSunJCE.class, TestDHKeyFactory.class, TestDSAKey.class, TestDSASignature.class,
         TestDSASignatureInteropSUN.class, TestDSASignatureInteropBC.class, TestECDH.class,
         TestECDHInteropSunEC.class, TestECDHMultiParty.class, TestECDSASignature.class,
-        TestECDSASignatureInteropSunEC.class, TestECDSASignatureInteropBC.class,
+        TestECDSASignatureInteropBC.class,
         TestECKeyImport.class, TestECKeyImportInteropSunEC.class, TestECKeyPairGenerator.class,
         TestHKDF.class, TestHKDFInterop.class, TestHmacMD5.class, TestHmacMD5InteropSunJCE.class,
         TestHmacSHA1.class, TestHmacSHA1InteropSunJCE.class, TestHmacSHA224.class,

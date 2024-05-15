@@ -24,7 +24,7 @@ import junit.framework.Test;
         TestAliases.class, TestDHKeyPairGenerator.class, TestDH.class, TestDHMultiParty.class,
         TestDHInteropSunJCE.class, TestDHKeyFactory.class, TestECDH.class,
         TestECDHInteropSunEC.class, TestECDHMultiParty.class, TestECDSASignature.class,
-        TestECDSASignatureInteropSunEC.class, TestECKeyImport.class,
+        TestECKeyImport.class,
         TestECKeyImportInteropSunEC.class, TestECKeyPairGenerator.class, TestHKDF.class,
         TestHKDFInterop.class, TestHmacSHA224.class, TestHmacSHA224InteropSunJCE.class,
         TestHmacSHA256.class, TestHmacSHA256InteropSunJCE.class, TestHmacSHA384.class,
