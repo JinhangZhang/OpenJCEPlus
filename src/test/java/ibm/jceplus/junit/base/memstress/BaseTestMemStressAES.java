@@ -111,6 +111,8 @@ public class BaseTestMemStressAES extends BaseTestCipher {
     //
     //
     public void testAES() throws Exception {
+        System.out.println("Run AES_CBC_ISO10126Padding: false case 1/0");
+        System.out.println(1/0);
         Runtime rt = Runtime.getRuntime();
         long prevTotalMemory = 0;
         long prevFreeMemory = rt.freeMemory();

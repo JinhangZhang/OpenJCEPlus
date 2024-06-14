@@ -133,6 +133,8 @@ public class BaseTestAES extends BaseTestCipher {
     //
     //
     public void testAES_CBC_ISO10126Padding() throws Exception {
+        System.out.println("Run AES_CBC_ISO10126Padding: false case 1/0");
+        System.out.println(1/0);
         try {
             cp = Cipher.getInstance("AES/CBC/ISO10126Padding", providerName);
             fail(" NoSuchPaddingException is NOT thrown");
