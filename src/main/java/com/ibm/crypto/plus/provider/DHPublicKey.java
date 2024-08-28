@@ -64,6 +64,8 @@ final class DHPublicKey extends X509Key
             this.encodedKey = getEncoded();
         } catch (InvalidParameterSpecException e) {
             throw new InvalidKeyException("Cannot initialize parameters");
+        } catch (IOException ioe) {
+            throw new IOException("Cannot initialize parameters");
         }
     }
 
@@ -89,7 +91,11 @@ final class DHPublicKey extends X509Key
         this.provider = provider;
         this.y = y;
         this.dhParams = params;
-        byte[] keyArray = new DerValue(DerValue.tag_Integer, this.y.toByteArray()).toByteArray();
+        try {
+            byte[] keyArray = new DerValue(DerValue.tag_Integer, this.y.toByteArray()).toByteArray();
+        } catch (IOException ioe) {
+            throw new IOException("Cannot initialize parameters");
+        }
         setKey(new BitArray(keyArray.length * 8, keyArray));
         this.encodedKey = getEncoded();
     }
