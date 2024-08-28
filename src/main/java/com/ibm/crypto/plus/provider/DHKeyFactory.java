@@ -75,6 +75,8 @@ public final class DHKeyFactory extends KeyFactorySpi {
             }
         } catch (InvalidKeyException e) {
             throw new InvalidKeySpecException("Inappropriate key specification", e);
+        } catch (IOException ioe) {
+            System.out.print("IOException in engineGeneratePublic method.");
         }
     }
 

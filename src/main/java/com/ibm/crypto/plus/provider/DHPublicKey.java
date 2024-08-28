@@ -48,12 +48,12 @@ final class DHPublicKey extends X509Key
     private transient DHKey dhKey = null; // Transient per tag [SERIALIZATION] in DesignNotes.txt
 
     DHPublicKey(OpenJCEPlusProvider provider, BigInteger y, BigInteger p, BigInteger g)
-            throws InvalidKeyException {
+            throws InvalidKeyException, IOException {
         this(provider, y, p, g, 0);
     }
 
     DHPublicKey(OpenJCEPlusProvider provider, BigInteger y, BigInteger p, BigInteger g,
-            int l) throws InvalidKeyException {
+            int l) throws InvalidKeyException, IOException {
         this.provider = provider;
         this.y = y;
         dhParams = new DHParameters(provider);
@@ -64,8 +64,6 @@ final class DHPublicKey extends X509Key
             this.encodedKey = getEncoded();
         } catch (InvalidParameterSpecException e) {
             throw new InvalidKeyException("Cannot initialize parameters");
-        } catch (IOException ioe) {
-            throw new IOException("Cannot initialize parameters");
         }
     }
 
@@ -87,15 +85,11 @@ final class DHPublicKey extends X509Key
      *                if the key cannot be encoded
      */
     public DHPublicKey(OpenJCEPlusProvider provider, BigInteger y, DHParameters params)
-            throws InvalidKeyException {
+            throws InvalidKeyException, IOException {
         this.provider = provider;
         this.y = y;
         this.dhParams = params;
-        try {
-            byte[] keyArray = new DerValue(DerValue.tag_Integer, this.y.toByteArray()).toByteArray();
-        } catch (IOException ioe) {
-            throw new IOException("Cannot initialize parameters");
-        }
+        byte[] keyArray = new DerValue(DerValue.tag_Integer, this.y.toByteArray()).toByteArray();
         setKey(new BitArray(keyArray.length * 8, keyArray));
         this.encodedKey = getEncoded();
     }

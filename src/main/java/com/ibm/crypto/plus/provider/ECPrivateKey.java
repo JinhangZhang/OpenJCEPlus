@@ -152,6 +152,7 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
             System.out.println("Start to parsing the key bits...");
             parseKeyBits();
         } catch (IOException e) {
+            e.printStackTrace();
             throw new InvalidKeyException("parseKeyBits: " + e.getMessage());
         }
 
@@ -159,7 +160,7 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
             System.out.println("Start to getting encoded private key bytes...");
             getEncodedPrivateKeyBytes(encoded);
         } catch (IOException e) {
-            // e.printStackTrace();
+            e.printStackTrace();
             throw new InvalidKeyException("getEncodedPrivateKeyBytes " + e.getMessage());
         }
         // System.out.println("After decoding this.publicKey=" +
@@ -179,6 +180,7 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
             // public bytes="
             // + ECUtils.bytesToHex(ecKey.getPublicKeyBytes()));
         } catch (Exception exception) {
+            exception.printStackTrace();
             InvalidKeyException ike = new InvalidKeyException("Failed to create EC private key");
             provider.setOCKExceptionCause(ike, exception);
             throw ike;
