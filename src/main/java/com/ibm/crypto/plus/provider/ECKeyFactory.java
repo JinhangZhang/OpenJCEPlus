@@ -72,10 +72,9 @@ public final class ECKeyFactory extends KeyFactorySpi {
                 ECParameterSpec ecParams = privateKeySpec.getParams();
                 return new ECPrivateKey(provider, s, ecParams);
             } else if (keySpec instanceof PKCS8EncodedKeySpec) {
-                // System.out.println ("PKCS8EncodedKeySpec");
+                System.out.println ("PKCS8EncodedKeySpec");
                 byte[] encodedPrivKeySpec = ((PKCS8EncodedKeySpec) keySpec).getEncoded();
-                // System.out.println ("encodedPrivKeySpec=" +
-                // ECUtils.bytesToHex(encodedPrivKeySpec));
+                System.out.println ("encodedPrivKeySpec=" + ECUtils.bytesToHex(encodedPrivKeySpec));
                 return new ECPrivateKey(provider, encodedPrivKeySpec);
             } else {
                 throw new InvalidKeySpecException("Inappropriate key specification");

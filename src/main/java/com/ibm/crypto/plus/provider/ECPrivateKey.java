@@ -149,12 +149,14 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
         this.provider = provider;
 
         try {
+            System.out.println("Start to parsing the key bits...");
             parseKeyBits();
         } catch (IOException e) {
             throw new InvalidKeyException("parseKeyBits: " + e.getMessage());
         }
 
         try {
+            System.out.println("Start to getting encoded private key bytes...");
             getEncodedPrivateKeyBytes(encoded);
         } catch (IOException e) {
             // e.printStackTrace();
@@ -587,19 +589,23 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
 
         // System.out.println("in parse key bits this.key=" +
         // ECKey.bytesToHex(this.key));
-
+        System.out.println("1");
         try {
             // Begin parsing "version" and "s" out of "key"
             DerInputStream in = new DerInputStream(key);
+            System.out.println("2");
             DerValue derValue = in.getDerValue();
+            System.out.println("3");
 
-            // System.out.println("derValue.getTag=" + derValue.getTag());
+            System.out.println("derValue.getTag=" + derValue.getTag());
+            System.out.println("DerValue.tag_Sequence=" + DerValue.tag_Sequence);
             if (derValue.getTag() != DerValue.tag_Sequence) {
+                System.out.println("4");
                 throw new IOException(MSG_SEQ);
             }
             DerInputStream data = derValue.getData();
             int version = data.getInteger();
-            // System.out.println("version=" + version);
+            System.out.println("version=" + version);
             // PKCS8Key contains the decoding logic for all instances of
             // PrivateKeys.
             // It is checking that this version is set to one.
@@ -611,23 +617,30 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
             s = new BigInteger(1, privData);
 
             // End parsing "version" and "s" out of "key"
-            // System.out.println("s=" + s);
+            System.out.println("s=" + s);
 
             while (data.available() != 0) {
+                System.out.println("5");
                 DerValue value = data.getDerValue();
+                System.out.println("6");
                 if (!((value.isContextSpecific((byte) 0)) || (value.isContextSpecific((byte) 1)))) {
+                    System.out.println("7");
                     throw new IOException("Unexpected value: " + value);
                 }
+                System.out.println("8");
             }
 
             AlgorithmParameters algParams = this.algid.getParameters();
+            System.out.println("9");
             if (algParams == null) {
+                System.out.println("10");
                 throw new IOException(
                         "EC domain parameters must be encoded in the algorithm identifier");
             }
-            // System.out.println("algParams=" + algParams);
+            System.out.println("algParams=" + algParams);
 
             params = algParams.getParameterSpec(ECParameterSpec.class);
+            System.out.println("11");
 
         } catch (IOException e) {
             // e.printStackTrace();
