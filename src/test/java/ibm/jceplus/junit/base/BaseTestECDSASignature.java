@@ -8,18 +8,27 @@
 
 package ibm.jceplus.junit.base;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.AlgorithmParameters;
 import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.interfaces.ECPrivateKey;
 import java.security.spec.ECGenParameterSpec;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPrivateKeySpec;
 import java.util.Arrays;
+import javax.crypto.KeyAgreement;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.Assert.assertTrue;
 
 public class BaseTestECDSASignature extends BaseTestSignature {
@@ -759,6 +768,40 @@ public class BaseTestECDSASignature extends BaseTestSignature {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"secp256r1", "secp384r1", "secp521r1"})
+    public void testECDSASignatureWithInvalidKeySpec(String curveName) throws Exception {
+        ECPrivateKey ecPrivKey = makePrivateKey(curveName);
+
+        // Check using the private key for creating a digital signature
+        Signature sig = null;
+        KeyAgreement ka = null;
+        try {
+            sig = Signature.getInstance("SHA256withECDSA", this.getProviderName());
+            sig.initSign(ecPrivKey);
+            throw new RuntimeException("Expected exception for " +
+                    "ECDSA/" + sig.getAlgorithm() + "/" + curveName +
+                    " not thrown.");
+        } catch (InvalidKeyException ike) {
+            // We are expecting this to be caught
+            System.out.println("Caught expected exception for " +
+                    "ECDSA/" + sig.getAlgorithm() + "/" + curveName +
+                    ": " + ike);
+        }
+
+        // Next, try starting a ECDH operation
+        try {
+            ka = KeyAgreement.getInstance("ECDH", this.getProviderName());
+            ka.init(ecPrivKey);
+            throw new RuntimeException("Expected exception for ECDH/" +
+                    curveName + " not thrown.");
+        } catch (InvalidKeyException ike) {
+            // We are expecting this to be caught
+            System.out.println("Caught expected exception for ECDH/" +
+                    curveName + ": " + ike);
+        }
+    }
+
     private void doTestPositiveSigBytes(String keyAlg, String sigAlg, String providerName)
             throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(keyAlg, providerName);
@@ -799,6 +842,29 @@ public class BaseTestECDSASignature extends BaseTestSignature {
         ECGenParameterSpec ecgenParameterSpec = new ECGenParameterSpec(curveName);
         ecKeyPairGen.initialize(ecgenParameterSpec);
         return ecKeyPairGen.generateKeyPair();
+    }
+
+    private ECPrivateKey makePrivateKey(String curveName) {
+        try {
+            System.out.println("Creating private key for curve " + curveName);
+
+            AlgorithmParameters params = AlgorithmParameters.getInstance("EC", getProviderName());
+            params.init(new ECGenParameterSpec(curveName));
+            ECParameterSpec ecParameters = params.getParameterSpec(ECParameterSpec.class);
+            BigInteger order = ecParameters.getOrder(); // the N value
+            System.out.println("Order is: " + order);
+
+            // Create a private key value (d) that is outside the range
+            // [1, N-1]
+            BigInteger dVal = order.add(BigInteger.TWO);
+            System.out.println("Modified d Value is: " + dVal);
+
+            // Create the private key
+            KeyFactory kf = KeyFactory.getInstance("EC", getProviderName());
+            return (ECPrivateKey) kf.generatePrivate(new ECPrivateKeySpec(dVal, ecParameters));
+        } catch (java.security.GeneralSecurityException gse) {
+            throw new RuntimeException("Unexpected error creating private key", gse);
+        }
     }
 
 }
