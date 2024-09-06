@@ -5,7 +5,7 @@
  * this file except in compliance with the License.  You can obtain a copy
  * in the file LICENSE in the source distribution.
  */
-package ibm.jceplus.junit.openjceplusfips;
+package ibm.jceplus.junit.openjceplus;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,10 +18,10 @@ public class TestECDHKeyAgreementParamValidation extends BaseTestECDHKeyAgreemen
         Utils.loadProviderTestSuite();
         setProviderName(Utils.TEST_SUITE_PROVIDER_NAME);
 
-        if (java.security.Security.getProvider("OpenJCEPlus") != null) {
-            java.security.Security.removeProvider("OpenJCEPlus");
+        if (java.security.Security.getProvider("OpenJCEPlusFIPS") != null) {
+            java.security.Security.removeProvider("OpenJCEPlusFIPS");
         }
-        insertProvider("OpenJCEPlusFIPS", "com.ibm.crypto.plus.provider.OpenJCEPlusFIPS", 1);
+        insertProvider("OpenJCEPlus", "com.ibm.crypto.plus.provider.OpenJCEPlus", 1);
     }
     
 }

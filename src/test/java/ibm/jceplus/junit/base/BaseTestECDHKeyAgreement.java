@@ -20,7 +20,7 @@ import java.security.spec.ECPrivateKeySpec;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class BaseTestECDHKeyAgreement extends BaseTest{
+public class BaseTestECDHKeyAgreement extends BaseTestJunit5{
     
     private volatile static boolean clientRenegoReady = false;
 
@@ -34,18 +34,18 @@ public class BaseTestECDHKeyAgreement extends BaseTest{
 
     @Test
     private static void testInitWithInvalidKey() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", providerName);
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", getProviderName());
         kpg.initialize(256);
         KeyPair kp = kpg.generateKeyPair();
         ECPrivateKey privateKey = (ECPrivateKey) kp.getPrivate();
 
-        KeyFactory keyFactory = KeyFactory.getInstance("EC", providerName);
+        KeyFactory keyFactory = KeyFactory.getInstance("EC", getProviderName());
         ECPrivateKey invalidPrivateKey
                 = (ECPrivateKey) keyFactory.generatePrivate(
                         new ECPrivateKeySpec(BigInteger.ZERO,
                                 privateKey.getParams()));
 
-        KeyAgreement ka = KeyAgreement.getInstance("ECDH", providerName);
+        KeyAgreement ka = KeyAgreement.getInstance("ECDH", getProviderName());
 
         // The first initiation should succeed.
         ka.init(privateKey);
@@ -68,16 +68,16 @@ public class BaseTestECDHKeyAgreement extends BaseTest{
     @Test
     private static void testDoPhaseWithInvalidKey() throws Exception {
         // SECP256R1 key pair
-        KeyPairGenerator kpgP256 = KeyPairGenerator.getInstance("EC", providerName);
+        KeyPairGenerator kpgP256 = KeyPairGenerator.getInstance("EC", getProviderName());
         kpgP256.initialize(256);
         KeyPair kpP256 = kpgP256.generateKeyPair();
 
         // SECP384R1 key pair
-        KeyPairGenerator kpgP384 = KeyPairGenerator.getInstance("EC", providerName);
+        KeyPairGenerator kpgP384 = KeyPairGenerator.getInstance("EC", getProviderName());
         kpgP384.initialize(384);
         KeyPair kpP384 = kpgP384.generateKeyPair();
 
-        KeyAgreement ka = KeyAgreement.getInstance("ECDH", providerName);
+        KeyAgreement ka = KeyAgreement.getInstance("ECDH", getProviderName());
         ka.init(kpP256.getPrivate());
 
         assertThrows(
