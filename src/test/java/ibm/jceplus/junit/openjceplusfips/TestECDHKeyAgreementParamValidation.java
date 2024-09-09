@@ -8,13 +8,14 @@
 package ibm.jceplus.junit.openjceplusfips;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 
-public class TestECDHKeyAgreementParamValidation extends BaseTestECDHKeyAgreement{
+@TestInstance(Lifecycle.PER_CLASS)
+public class TestECDHKeyAgreementParamValidation extends ibm.jceplus.junit.base.BaseTestECDHKeyAgreement{
 
     @BeforeAll
-    public static void init() throws Exception {
+    public void beforeAll() throws Exception {
         Utils.loadProviderTestSuite();
         setProviderName(Utils.TEST_SUITE_PROVIDER_NAME);
 
