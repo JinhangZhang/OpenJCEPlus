@@ -15,6 +15,7 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.spec.ECPrivateKeySpec;
 import javax.crypto.KeyAgreement;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class BaseTestECDHKeyAgreement extends BaseTestJunit5 {
 
@@ -38,25 +39,37 @@ public class BaseTestECDHKeyAgreement extends BaseTestJunit5 {
 
         // The second initiation should fail with invalid private key,
         // and the private key assigned by the first initiation should be cleared.
-        try {
-            ka.init(invalidPrivateKey);
-        } catch (java.security.InvalidKeyException ike) {
-            System.out.println("Expected <java.security.InvalidKeyException> is caught.");
-        }
+        Assertions.assertThrows(
+            java.security.InvalidKeyException.class,
+            () -> ka.init(invalidPrivateKey);
+        );
+        // try {
+        //     ka.init(invalidPrivateKey);
+        // } catch (java.security.InvalidKeyException ike) {
+        //     System.out.println("Expected <java.security.InvalidKeyException> is caught.");
+        // }
 
         // Cannot doPhase due to no private key.
-        try {
-            ka.doPhase(kp.getPublic(), true);
-        } catch (java.lang.IllegalStateException ise) {
-            System.out.println("Expected <java.lang.IllegalStateException> is caught.");
-        }
+        Assertions.assertThrows(
+            java.lang.IllegalStateException.class,
+            () -> ka.doPhase(kp.getPublic(), true);
+        );
+        // try {
+        //     ka.doPhase(kp.getPublic(), true);
+        // } catch (java.lang.IllegalStateException ise) {
+        //     System.out.println("Expected <java.lang.IllegalStateException> is caught.");
+        // }
 
         // Cannot generate shared key due to no key
-        try {
-            ka.generateSecret();
-        } catch (java.lang.IllegalStateException ise) {
-            System.out.println("Expected <java.lang.IllegalStateException> is caught.");
-        }
+        Assertions.assertThrows(
+            java.lang.IllegalStateException.class,
+            () -> ka.generateSecret();
+        );
+        // try {
+        //     ka.generateSecret();
+        // } catch (java.lang.IllegalStateException ise) {
+        //     System.out.println("Expected <java.lang.IllegalStateException> is caught.");
+        // }
     }
 
     @Test
@@ -74,17 +87,25 @@ public class BaseTestECDHKeyAgreement extends BaseTestJunit5 {
         KeyAgreement ka = KeyAgreement.getInstance("ECDH", getProviderName());
         ka.init(kpP256.getPrivate());
 
-        try {
-            ka.doPhase(kpP384.getPublic(), true);
-        } catch (java.security.InvalidKeyException ise) {
-            System.out.println("Expected <java.security.InvalidKeyException> is caught.");
-        }
+        Assertions.assertThrows(
+            java.security.InvalidKeyException.class,
+            () -> ka.doPhase(kpP384.getPublic(), true);
+        );
+        // try {
+        //     ka.doPhase(kpP384.getPublic(), true);
+        // } catch (java.security.InvalidKeyException ise) {
+        //     System.out.println("Expected <java.security.InvalidKeyException> is caught.");
+        // }
 
         // Should not generate shared key with SECP256R1 private key and SECP384R1 public key
-        try {
-            ka.generateSecret();
-        } catch (java.lang.IllegalStateException ise) {
-            System.out.println("Expected <java.lang.IllegalStateException> is caught.");
-        }
+        Assertions.assertThrows(
+            java.lang.IllegalStateException.class,
+            () -> ka.generateSecret();
+        );
+        // try {
+        //     ka.generateSecret();
+        // } catch (java.lang.IllegalStateException ise) {
+        //     System.out.println("Expected <java.lang.IllegalStateException> is caught.");
+        // }
     }
 }
