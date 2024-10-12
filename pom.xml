@@ -336,6 +336,8 @@
                         <arg>--add-exports </arg> 
                         <arg>java.base/sun.security.util=${test.compilation.export.target}</arg>
                         <arg>--add-exports </arg> 
+                        <arg>java.base/sun.security.util=ALL-UNNAMED</arg>
+                        <arg>--add-exports </arg> 
                         <arg>java.base/sun.security.x509=${test.compilation.export.target}</arg>
                         <arg>--add-exports </arg> 
                         <arg>java.base/sun.security.pkcs=${test.compilation.export.target}</arg>
