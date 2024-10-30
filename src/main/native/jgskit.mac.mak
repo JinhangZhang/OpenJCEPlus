@@ -66,6 +66,7 @@ all : ${TARGET}
 
 ${TARGET} : ${OBJS}
 	gcc ${LDFLAGS} ${ARCHFLAGS} -o ${TARGET} ${OBJS} -L ${GSKIT_HOME}/lib64 -l jgsk8iccs
+	@test -f ${TARGET} && echo "${TARGET} built successfully!" || (echo "Error: ${TARGET} not created!" && exit 1)
 
 ${HOSTOUT}/%.o : %.c
 	test -d ${@D} || mkdir -p ${@D} 2>/dev/null
