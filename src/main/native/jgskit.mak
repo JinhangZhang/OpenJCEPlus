@@ -18,6 +18,7 @@ IS64SYSTEM=
 AIX_LIBPATH = /usr/lib:/lib
 
 ifeq (${PLATFORM},arm-linux64)
+  $(OpenJCEPlus PLATFORM: $(PLATFORM))
   PLAT=xr
   CFLAGS+= -DLINUX -Werror -std=gnu99 -pedantic -Wall -fstack-protector
   LDFLAGS+= -DLINUX
