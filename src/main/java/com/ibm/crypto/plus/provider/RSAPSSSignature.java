@@ -368,9 +368,11 @@ public final class RSAPSSSignature extends SignatureSpi {
         // If the message digest specified within the params is not the same as the MGF message digest
         // then throw an InvalidAlgorithmParameterException.
         String messageDigest = pssParameterSpec.getDigestAlgorithm();
+        System.out.println("RSAPSSSignature engineSetParameter messageDigest from pssParameterSpec is: " + messageDigest);
+
         if ((messageDigest != null) && (mgf1ParamSpec != null)) {
             String mgfMessageDigest = mgf1ParamSpec.getDigestAlgorithm();
-
+            System.out.println("RSAPSSSignature engineSetParameter messageDigest from mgf1ParamSpec is: " + mgfMessageDigest);
             if (mgfMessageDigest != null) {
                 boolean throwException = true;
                 if ((messageDigest.equalsIgnoreCase("SHA1")
