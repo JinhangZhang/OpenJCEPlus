@@ -181,6 +181,9 @@ public final class ECDHKeyAgreement extends KeyAgreementSpi { // implements
                 throw new IllegalStateException("OIDs for curve name is not recognized or not supported");
             }
 
+            System.out.println("Public key is: " + ecPubKeyNamedCurve.getName());
+            System.out.println("Private key is: " + ecPriKeyNamedCurve.getName());
+
             // check if curve is FIPS allowance and if it is allowed for ECDH shared secret computation
             if (!((oidPubKey.toString()).equals("1.2.840.10045.3.1.7") // secp256r1 [NIST P-256, X9.62 prime256v1]
                 || (oidPubKey.toString()).equals("1.3.132.0.33") // secp224r1 [NIST P-224]
