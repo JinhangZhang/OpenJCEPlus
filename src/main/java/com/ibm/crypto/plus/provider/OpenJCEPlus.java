@@ -382,6 +382,12 @@ public final class OpenJCEPlus extends OpenJCEPlusProvider {
         putService(new OpenJCEPlusService(jce, "Cipher", "PBEWithHmacSHA512/256AndAES_256",
                 "com.ibm.crypto.plus.provider.PBES2Core$HmacSHA512_256AndAES_256", aliases));
 
+        /*
+         * KEMs
+         */
+        putService(new OpenJCEPlusService(jce, "KEM", "DHKEM",
+                "com.ibm.crypto.plus.provider.DHKEM", aliases));
+        
         /* =======================================================================
          * Key agreement
          * =======================================================================
