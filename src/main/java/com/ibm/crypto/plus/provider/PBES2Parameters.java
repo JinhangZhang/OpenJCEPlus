@@ -79,7 +79,7 @@ import sun.security.util.ObjectIdentifier;
 abstract class PBES2Parameters extends AlgorithmParametersSpi {
 
     private static final ObjectIdentifier pkcs5PBKDF2_OID =
-            ObjectIdentifier.of(KnownOIDs.PBKDF2WithHmacSHA1);
+            oid("1.2.840.113549.1.5.12");
     private static final ObjectIdentifier pkcs5PBES2_OID =
             ObjectIdentifier.of(KnownOIDs.PBES2);
     private static final ObjectIdentifier aes128CBC_OID =
@@ -88,6 +88,14 @@ abstract class PBES2Parameters extends AlgorithmParametersSpi {
             ObjectIdentifier.of(KnownOIDs.AES_192$CBC$NoPadding);
     private static final ObjectIdentifier aes256CBC_OID =
             ObjectIdentifier.of(KnownOIDs.AES_256$CBC$NoPadding);
+    
+    private static ObjectIdentifier oid(String s) {
+        try {
+            return ObjectIdentifier.of(s);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Invalid OID: " + s, e);
+        }
+    }
 
     // the PBES2 algorithm name
     private String pbes2AlgorithmName = null;
