@@ -57,6 +57,7 @@ public final class ECKeyPairGenerator extends KeyPairGeneratorSpi {
             throws InvalidAlgorithmParameterException {
         if (!(params instanceof ECParameterSpec)) {
             if (params instanceof ECGenParameterSpec) {
+                System.out.println("ECKeyPairGenerator initialize function ((ECGenParameterSpec) params).getName() is: " + ((ECGenParameterSpec) params).getName());
                 this.oid = ECNamedCurve.getOIDFromName(((ECGenParameterSpec) params).getName());
 
                 if (this.oid == null)

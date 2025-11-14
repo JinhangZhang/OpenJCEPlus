@@ -179,6 +179,7 @@ final class ECNamedCurve extends ECGenParameterSpec implements AlgorithmParamete
 
     private static void add(String name, String soid, int type, String sfield, String a, String b,
             String x, String y, String n, int h, boolean fips) {
+        System.out.println("ECNamedCurve add function name is: " + name + ", soid is: " + soid);
         BigInteger p = bi(sfield);
         ECFieldFp fieldp = null;
         ECFieldF2m fieldm = null;
@@ -209,6 +210,7 @@ final class ECNamedCurve extends ECGenParameterSpec implements AlgorithmParamete
             }
             String[] commonNames = SPLIT_PATTERN.split(name);
             for (String commonName : commonNames) {
+                System.out.println("ECNamedCurve add function name is: " + name + ", soid is: " + soid + "commonName is: " + commonName);
                 if (nameMap.put(commonName.trim(), params) != null) {
                     throw new ProviderException("Duplication name: " + commonName);
                 }
