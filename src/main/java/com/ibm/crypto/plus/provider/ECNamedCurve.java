@@ -158,6 +158,9 @@ final class ECNamedCurve extends ECGenParameterSpec implements AlgorithmParamete
     }
 
     protected static Map<String, ECParameterSpec> getNameMap() {
+        for (Map.Entry<String, ECParameterSpec> entry : nameMap.entrySet()) {
+            System.out.println("ECNamedCurve getNameMap() Curve name: " + entry.getKey());
+        }
         return nameMap;
     }
 
