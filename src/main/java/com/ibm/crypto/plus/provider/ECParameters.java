@@ -679,6 +679,7 @@ public final class ECParameters extends AlgorithmParametersSpi {
             for (Iterator<Entry<String, ECParameterSpec>> myIter = myEntrySet.iterator(); myIter.hasNext();) {
                 Entry<String, ECParameterSpec> myMapEntry = myIter.next();
                 String curveNameFromNameMap = myMapEntry.getKey();
+                System.out.println("Before check: ECParameters -> getNamedCurve -> curveNameFromNameMap is: " + curveNameFromNameMap);
                 ECParameterSpec ecParameterSpecFromNameMap = myMapEntry
                         .getValue();
 
@@ -750,6 +751,7 @@ public final class ECParameters extends AlgorithmParametersSpi {
                 // the associated
                 // ECNamedCurve name string.
                 // Create an instance of that ECNamedCurve and return it.
+                System.out.println("After check: ECParameters -> getNamedCurve -> curveNameFromNameMap is: " + curveNameFromNameMap);
                 ECNamedCurve myECNamedCurve = new ECNamedCurve(curveNameFromNameMap);
                 return myECNamedCurve;
 

@@ -56,6 +56,7 @@ final class ECNamedCurve extends ECGenParameterSpec implements AlgorithmParamete
     public ECNamedCurve(String name) {
         super(name);
         this.curveName = name;
+        System.out.println("ECNamedCurve constructor(String name) -> name is: " + name + ", this.curveName is: " + this.curveName);
 
         ecps = getECParameterSpec(curveName);
 
