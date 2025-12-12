@@ -87,7 +87,7 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
             this.ecKey = ECKey.createPrivateKey(provider.getOCKContext(), privateKeyBytes,
                     paramBytes, provider);
         } catch (Exception exception) {
-            throw new InvalidKeyException("Failed to create EC private key", exception);
+            throw new InvalidKeyException("Failed to create EC private key" + exception.getMessage(), exception);
         }
 
     }
@@ -122,7 +122,7 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
             this.ecKey = ECKey.createPrivateKey(provider.getOCKContext(), privateKeyBytes,
                     paramBytes, provider);
         } catch (Exception exception) {
-            throw new InvalidKeyException("Failed to create EC private key", exception);
+            throw new InvalidKeyException("Failed to create EC private key" + exception.getMessage(), exception);
         }
     }
 
@@ -194,18 +194,23 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
         outEncodedStream.putOctetString(privateKeyBytes);
 
         byte[] encodedParams = this.getAlgorithmId().getEncodedParams();
-        if (inputDerValue.length > 2) {
-            if (!inputDerValue[2].isContextSpecific(TAG_PARAMETERS_ATTRS)) {
-                throw new IOException("Decoding EC private key failed. Third element is not tagged as parameters");
-            }
-            DerInputStream paramDerInputStream = inputDerValue[2].getData();
-            byte[] privateKeyParams = paramDerInputStream.toByteArray();
-            
-            // Check against the existing parameters created by PKCS8Key.
-            if (!Arrays.equals(privateKeyParams, encodedParams)) {
-                throw new IOException("Decoding EC private key failed. The params are not the same as PKCS8Key's");
+        if (inputDerValue.length > 2) { 
+            if (inputDerValue[2].isContextSpecific(TAG_PARAMETERS_ATTRS)) {
+                DerInputStream paramDerInputStream = inputDerValue[2].getData();
+                byte[] privateKeyParams = paramDerInputStream.toByteArray();
+                // Check against the existing parameters created by PKCS8Key.
+                if (!Arrays.equals(privateKeyParams, encodedParams)) {
+                    throw new IOException("Decoding EC private key failed. The params are not the same as PKCS8Key's");
+                }
+            } else if (inputDerValue[2].isContextSpecific(TAG_PUBLIC_KEY_ATTRS)) {
+                // Found [1] publicKey (optional) - ignore here
+            } else {
+                // Unknown third+ element: we can throw, or ignore.
+                // Keeping old behavior would be to throw; but RFC allows only [0]/[1] here.
+                throw new IOException("Decoding EC private key failed. Unexpected tagged field in ECPrivateKey");
             }
         }
+
         // The native library needs the ASN.1 DER decoding of the private key to contain the parameters (i.e., the OID).
         outEncodedStream.write(
                     DerValue.createTag(DerValue.TAG_CONTEXT, true, TAG_PARAMETERS_ATTRS),

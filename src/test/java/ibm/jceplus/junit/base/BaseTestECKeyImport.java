@@ -24,11 +24,13 @@ import java.security.spec.EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
 import sun.security.pkcs.PKCS8Key;
 import sun.security.x509.X509Key;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BaseTestECKeyImport extends BaseTestJunit5 {
@@ -82,6 +84,16 @@ public class BaseTestECKeyImport extends BaseTestJunit5 {
                                                  + "9C57C30FAA2DEF09DDDAD4E8748C442325B8EDB94EF7AA9"
                                                  + "78D4A56F0B601448B0DDFA4CC4B0555EAE67354C442A3AC"
                                                  + "E9D04BE186765A1921962FC08D1A58C53A";
+
+    private static final String private_secp256r1_no_parameters = 
+                                                "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgn5K03bpTLjEtFQRa" +
+                                                "JUtx22gtmGEvvSUSQdimhGthdtihRANCAARv72fTmp9ed8dRvTG1Ak1Lgl5KLoiM" +
+                                                "59bk2pyG8qd8l7L1WQnNHtAcu44RJ1/GVHurxghaCKHeJYsZ8H7DEeI6";
+
+    private static final String private_secp256r1_no_parameters_no_public = 
+                                                "3041020100301306072A8648CE3D020106082A8648CE3D030107042730250201" +
+                                                "010420ABB1ECFCB6C76DF68BB0EAF8F82434675FB411720F380271335014841D" + 
+                                                "EAE63F";
     
 
     /**
@@ -304,6 +316,19 @@ public class BaseTestECKeyImport extends BaseTestJunit5 {
         importPublicKey = keyFactory.generatePublic(publicKeySpec);
 
         assertTrue(((X509Key) importPublicKey).getAlgorithmId().toString().contains("secp521r1"), "Curve is not what is expected.");
+    }
+
+    @Test
+    public void testECPrivateKeyWithoutParametersPublicKey() throws Exception {
+        KeyFactory kf = KeyFactory.getInstance("EC", getProviderName());
+
+        PKCS8EncodedKeySpec priKeySpecNoParameters = new PKCS8EncodedKeySpec(Base64.getMimeDecoder().decode(private_secp256r1_no_parameters));
+        PrivateKey priKeyNoParameters = kf.generatePrivate(priKeySpecNoParameters);
+        assertNotNull(priKeyNoParameters);
+
+        PKCS8EncodedKeySpec priKeySpecNoParametersNoPublicKey = new PKCS8EncodedKeySpec(Base64.getMimeDecoder().decode(private_secp256r1_no_parameters_no_public));
+        PrivateKey priKeyNoParametersNoPublicKey = kf.generatePrivate(priKeySpecNoParametersNoPublicKey);
+        assertNotNull(priKeyNoParametersNoPublicKey);
     }
 }
 
