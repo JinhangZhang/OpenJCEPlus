@@ -87,7 +87,7 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
             this.ecKey = ECKey.createPrivateKey(provider.getOCKContext(), privateKeyBytes,
                     paramBytes, provider);
         } catch (Exception exception) {
-            throw new InvalidKeyException("Failed to create EC private key", exception);
+            throw new InvalidKeyException("Failed to create EC private key" + exception.getMessage(), exception);
         }
 
     }
@@ -122,7 +122,7 @@ final class ECPrivateKey extends PKCS8Key implements java.security.interfaces.EC
             this.ecKey = ECKey.createPrivateKey(provider.getOCKContext(), privateKeyBytes,
                     paramBytes, provider);
         } catch (Exception exception) {
-            throw new InvalidKeyException("Failed to create EC private key", exception);
+            throw new InvalidKeyException("Failed to create EC private key" + exception.getMessage(), exception);
         }
     }
 
