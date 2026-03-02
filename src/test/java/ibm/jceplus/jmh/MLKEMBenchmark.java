@@ -16,7 +16,6 @@ import javax.crypto.KEM;
 import javax.crypto.SecretKey;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
-import org.openjdk.jmh.annotations.Level.Trial;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
@@ -53,7 +52,7 @@ public class MLKEMBenchmark extends JMHBase {
     private ByteBuffer globalDirectBuffer;
     private byte[] globalHeapData;
 
-    @Setup(Level.Trial)
+    @Setup
     public void setup() throws Exception {
         insertProvider(provider);
         myKEM = KEM.getInstance(transformation, provider);
@@ -79,7 +78,7 @@ public class MLKEMBenchmark extends JMHBase {
         ByteBuffer threadLocalDirectBuffer;
         byte[] threadLocalHeapBuffer;
 
-        @Setup(Level.Trial)
+        @Setup
         public void setup(MLKEMBenchmark benchmark) throws Exception {
             this.decapsulator = benchmark.myKEM.newDecapsulator(benchmark.keyPair.getPrivate());
             
