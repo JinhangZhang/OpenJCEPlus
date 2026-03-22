@@ -183,7 +183,12 @@ class PQCKeyFactory extends KeyFactorySpi {
         return switch (keySpec) {
             case ibm.security.internal.spec.RawKeySpec rks -> rks.getKeyArr();
             case sun.security.util.RawKeySpec rks -> rks.getKeyArr();
-            case EncodedKeySpec eks when eks.getFormat().equalsIgnoreCase("RAW") -> eks.getEncoded();
+            case EncodedKeySpec eks -> {
+                if (eks.getFormat().equalsIgnoreCase("RAW")) {
+                    yield eks.getEncoded();
+                }
+                yield null;
+            }
             default -> null;
         };
     }

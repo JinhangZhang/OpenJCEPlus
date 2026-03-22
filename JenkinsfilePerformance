@@ -367,6 +367,7 @@ pipeline {
                                             'ibm.jceplus.jmh.X448KeyExchangeBenchmark', \
                                             'ibm.jceplus.jmh.X25519KeyExchangeBenchmark', \
                                             'ibm.jceplus.jmh.XDHKeyExchangeBenchmark', \
+                                            'ibm.jceplus.jmh.TLSSocketBenchmark', \
                                             'ibm.jceplus.jmh.XDHKeyGeneratorBenchmark'], description: '\
             Specify the performance benchmark you would like to run.')
         separator(name: "ExtendedOptions", sectionHeader: "Extended Options",
