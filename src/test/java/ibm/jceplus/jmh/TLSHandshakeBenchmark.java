@@ -12,12 +12,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.KeyStore;
-import java.security.Provider;
-import java.security.Security;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
@@ -43,13 +40,13 @@ import org.openjdk.jmh.runner.options.Options;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 10, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 4, time = 30, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 5, time = 10, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 10, time = 20, timeUnit = TimeUnit.SECONDS)
 @Fork(1)
 public class TLSHandshakeBenchmark extends JMHBase {
 
     @Param({"X25519", "X25519MLKEM768"})
-    public String namedGroup;
+    public String namedGroup;    
 
     @Param({"true", "false"})
     public boolean useCache;
@@ -61,10 +58,9 @@ public class TLSHandshakeBenchmark extends JMHBase {
     private int port;
     private Thread serverThread;
 
-    @Setup
+    @Setup(Level.Trial)
     public void setup() throws Exception {
         super.setup("OpenJCEPlus");
-
         generateKeyStore();
 
         KeyStore ks = KeyStore.getInstance("PKCS12");
@@ -81,6 +77,18 @@ public class TLSHandshakeBenchmark extends JMHBase {
         SSLContext sslContext = SSLContext.getInstance("TLS");
         sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
 
+        if (!useCache) {
+            sslContext.getServerSessionContext().setSessionCacheSize(0);
+            sslContext.getClientSessionContext().setSessionCacheSize(0);
+            sslContext.getServerSessionContext().setSessionTimeout(0);
+            sslContext.getClientSessionContext().setSessionTimeout(0);
+        } else {
+            sslContext.getServerSessionContext().setSessionCacheSize(20480);
+            sslContext.getClientSessionContext().setSessionCacheSize(20480);
+            sslContext.getServerSessionContext().setSessionTimeout(86400);
+            sslContext.getClientSessionContext().setSessionTimeout(86400);
+        }
+
         SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
         serverSocket = (SSLServerSocket) ssf.createServerSocket(0);
         serverSocket.setEnabledCipherSuites(new String[]{CIPHER_SUITE});
@@ -93,17 +101,13 @@ public class TLSHandshakeBenchmark extends JMHBase {
                 try (SSLSocket socket = (SSLSocket) serverSocket.accept()) {
                     socket.setEnabledProtocols(new String[]{"TLSv1.3"});
                     
-                    SSLParameters params = socket.getSSLParameters();
-                    params.setNamedGroups(new String[]{namedGroup});
-                    socket.setSSLParameters(params);
-                    
                     socket.startHandshake();
 
                     socket.getInputStream().read();
                     socket.getOutputStream().write(2);
-                    
+                    socket.getInputStream().read();
                 } catch (IOException e) {
-                    // ignore, likely due to shutdown
+                    // Ignore
                 }
             }
         });
@@ -126,19 +130,13 @@ public class TLSHandshakeBenchmark extends JMHBase {
         try (SSLSocket clientSocket = (SSLSocket) clientFactory.createSocket("localhost", port)) {
             clientSocket.setEnabledProtocols(new String[]{"TLSv1.3"});
             clientSocket.setEnabledCipherSuites(new String[]{CIPHER_SUITE});
-            
-            SSLParameters params = clientSocket.getSSLParameters();
-            params.setNamedGroups(new String[]{namedGroup});
-            clientSocket.setSSLParameters(params);
-            
+
             clientSocket.startHandshake();
 
             clientSocket.getOutputStream().write(1);
             clientSocket.getInputStream().read();
+            clientSocket.getOutputStream().write(3);
 
-            if (!useCache) {
-                clientSocket.getSession().invalidate();
-            }
         }
     }
 
@@ -174,7 +172,6 @@ public class TLSHandshakeBenchmark extends JMHBase {
     public static void main(String[] args) throws RunnerException {
         String testSimpleName = TLSHandshakeBenchmark.class.getSimpleName();
         Options opt = optionsBuild(testSimpleName, testSimpleName);
-
         new Runner(opt).run();
     }
 }
