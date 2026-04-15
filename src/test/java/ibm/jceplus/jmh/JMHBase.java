@@ -86,6 +86,7 @@ abstract public class JMHBase {
                 "--add-exports=java.base/sun.security.pkcs=ALL-UNNAMED",
                 "--add-exports=java.base/sun.security.x509=ALL-UNNAMED",
                 "-Dock.library.path=" + ockLibraryPath,
+                // "-Djavax.net.debug=all",
                 "-Djgskit.library.path=" + jgskitLibraryPath));
         if (allowedProv != null) {
             jvmArgs.add("-Djmh.allowedProviders=" + allowedProv);
