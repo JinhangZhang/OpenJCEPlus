@@ -86,7 +86,7 @@ abstract public class JMHBase {
                 "--add-exports=java.base/sun.security.pkcs=ALL-UNNAMED",
                 "--add-exports=java.base/sun.security.x509=ALL-UNNAMED",
                 "-Dock.library.path=" + ockLibraryPath,
-                // "-Djavax.net.debug=all",
+                "-Djavax.net.debug=all",
                 "-Djgskit.library.path=" + jgskitLibraryPath));
         if (allowedProv != null) {
             jvmArgs.add("-Djmh.allowedProviders=" + allowedProv);
@@ -168,6 +168,17 @@ abstract public class JMHBase {
             if (myProvider == null) {
                 myProvider = (Provider) Class.forName("com.ibm.crypto.plus.provider.OpenJCEPlus")
                         .getDeclaredConstructor().newInstance();
+            } else {
+                java.security.Security.removeProvider("OpenJCEPlus");
+            }
+            java.security.Security.insertProviderAt(myProvider, 1);
+        } else if (provider.equalsIgnoreCase("OpenJCEPlusFIPS")) {
+            Provider myProvider = java.security.Security.getProvider("OpenJCEPlusFIPS");
+            if (myProvider == null) {
+                myProvider = (Provider) Class.forName("com.ibm.crypto.plus.provider.OpenJCEPlusFIPS")
+                        .getDeclaredConstructor().newInstance();
+            } else {
+                java.security.Security.removeProvider("OpenJCEPlusFIPS");
             }
             java.security.Security.insertProviderAt(myProvider, 1);
         } else if (provider.equalsIgnoreCase("BC")) {
@@ -176,6 +187,8 @@ abstract public class JMHBase {
                 myProvider = (Provider) Class
                         .forName("org.bouncycastle.jce.provider.BouncyCastleProvider")
                         .getDeclaredConstructor().newInstance();
+            } else {
+                java.security.Security.removeProvider("BC");
             }
             java.security.Security.insertProviderAt(myProvider, 1);
         }
