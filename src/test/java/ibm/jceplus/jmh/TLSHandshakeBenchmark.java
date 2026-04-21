@@ -127,8 +127,10 @@ public class TLSHandshakeBenchmark extends JMHBase {
 
         if ("non-cached".equals(useCache)) {
             sslContext.getClientSessionContext().setSessionCacheSize(0);
+            sslContext.getServerSessionContext().setSessionCacheSize(0);
         } else {
             sslContext.getClientSessionContext().setSessionCacheSize(100);
+            sslContext.getServerSessionContext().setSessionCacheSize(100);
         }
 
         SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
