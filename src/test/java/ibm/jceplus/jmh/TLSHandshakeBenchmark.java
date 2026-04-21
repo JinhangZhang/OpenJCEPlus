@@ -25,7 +25,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
@@ -52,8 +51,6 @@ import org.openjdk.jmh.runner.options.Options;
 @Measurement(iterations = 4, time = 30, timeUnit = TimeUnit.SECONDS)
 public class TLSHandshakeBenchmark extends JMHBase {
 
-    private static final String PAYLOAD_1KB = "1024";
-
     @Param({"X25519", "X25519MLKEM768", "SecP256r1MLKEM768", "SecP384r1MLKEM1024"})
     public String namedGroup;
 
@@ -63,7 +60,7 @@ public class TLSHandshakeBenchmark extends JMHBase {
     @Param({"TLS_AES_256_GCM_SHA384"})
     public String cipherSuite;
 
-    @Param({PAYLOAD_1KB})
+    @Param({"1024"})
     public int payload;
 
     private SSLServerSocket serverSocket;
@@ -72,10 +69,9 @@ public class TLSHandshakeBenchmark extends JMHBase {
     private int port;
     private Thread serverThread;
     private volatile boolean serverReady = false;
-    private SSLSession cachedSession;
+    private volatile boolean running = true;
 
-    // --- Hardcoded 证书数据 (EC secp256r1) ---
-    private static final String CA_CERT_B64 = 
+    private static final String CA_CERT_B64 =
             "MIIBvjCCAWOgAwIBAgIJAIvFG6GbTroCMAoGCCqGSM49BAMCMDsxCzAJBgNVBAYT" +
             "AlVTMQ0wCwYDVQQKDARKYXZhMR0wGwYDVQQLDBRTdW5KU1NFIFRlc3QgU2VyaXZj" +
             "ZTAeFw0xODA1MjIwNzE4MTZaFw0zODA1MTcwNzE4MTZaMDsxCzAJBgNVBAYTAlVT" +
@@ -87,7 +83,7 @@ public class TLSHandshakeBenchmark extends JMHBase {
             "6wluh1r2/T6L31mZXRKf9JxeSf9pIzoLj+8xQeUChQIhAJ09wAi1kV8yePLh2FD9" +
             "2YEHlSQUAbwwqCDEVB5KxaqP";
 
-    private static final String EE_CERT_B64 = 
+    private static final String EE_CERT_B64 =
             "MIIBqjCCAVCgAwIBAgIJAPLY8qZjgNRAMAoGCCqGSM49BAMCMDsxCzAJBgNVBAYT" +
             "AlVTMQ0wCwYDVQQKDARKYXZhMR0wGwYDVQQLDBRTdW5KU1NFIFRlc3QgU2VyaXZj" +
             "ZTAeFw0xODA1MjIwNzE4MTZaFw0zODA1MTcwNzE4MTZaMFUxCzAJBgNVBAYTAlVT" +
@@ -98,7 +94,7 @@ public class TLSHandshakeBenchmark extends JMHBase {
             "SXFG7xo1oIYwCgYIKoZIzj0EAwIDSAAwRQIgWpRegWXMheiD3qFdd8kMdrkLxRbq" +
             "1zj8nQMEwFTUjjQCIQDRIrAjZX+YXHN9b0SoWWLPUq0HmiFIi8RwMnO//wJIGQ==";
 
-    private static final String EE_KEY_B64 = 
+    private static final String EE_KEY_B64 =
             "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgn5K03bpTLjEtFQRa" +
             "JUtx22gtmGEvvSUSQdimhGthdtihRANCAARv72fTmp9ed8dRvTG1Ak1Lgl5KLoiM" +
             "59bk2pyG8qd8l7L1WQnNHtAcu44RJ1/GVHurxghaCKHeJYsZ8H7DEeI6";
@@ -108,178 +104,139 @@ public class TLSHandshakeBenchmark extends JMHBase {
         super.setup("OpenJCEPlus");
         Security.setProperty("jdk.tls.disabledAlgorithms", "");
 
-        // 替换 generateKeyStore()：直接在内存构建 KeyStore
-        String keystorePassword = "password";
-        KeyStore keyStore = KeyStore.getInstance("PKCS12");
-        keyStore.load(null, null);
+        char[] pwd = "passphrase".toCharArray();
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        ks.load(null, null);
 
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
-        Certificate caCert = cf.generateCertificate(new ByteArrayInputStream(Base64.getDecoder().decode(CA_CERT_B64)));
-        Certificate eeCert = cf.generateCertificate(new ByteArrayInputStream(Base64.getDecoder().decode(EE_CERT_B64)));
-        PrivateKey eePrivKey = KeyFactory.getInstance("EC").generatePrivate(
+        Certificate ca = cf.generateCertificate(new ByteArrayInputStream(Base64.getDecoder().decode(CA_CERT_B64)));
+        Certificate ee = cf.generateCertificate(new ByteArrayInputStream(Base64.getDecoder().decode(EE_CERT_B64)));
+        PrivateKey key = KeyFactory.getInstance("EC").generatePrivate(
                 new PKCS8EncodedKeySpec(Base64.getDecoder().decode(EE_KEY_B64)));
 
-        keyStore.setCertificateEntry("ca", caCert);
-        keyStore.setKeyEntry("ee", eePrivKey, keystorePassword.toCharArray(), new Certificate[]{eeCert});
+        ks.setCertificateEntry("ca", ca);
+        ks.setKeyEntry("ee", key, pwd, new Certificate[]{ee});
 
-        // Initialize KeyManagerFactory
-        KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(keyStore, keystorePassword.toCharArray());
-        
-        // Initialize TrustManagerFactory
-        TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        tmf.init(keyStore);
-        
-        // Create SSLContext with the key and trust managers
+        KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
+        kmf.init(ks, pwd);
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance("PKIX");
+        tmf.init(ks);
+
         sslContext = SSLContext.getInstance("TLS");
         sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-        
-        SSLServerSocketFactory ssf = (SSLServerSocketFactory) sslContext.getServerSocketFactory();
+
+        if ("non-cached".equals(useCache)) {
+            sslContext.getClientSessionContext().setSessionCacheSize(0);
+        } else {
+            sslContext.getClientSessionContext().setSessionCacheSize(100);
+        }
+
+        SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
         serverSocket = (SSLServerSocket) ssf.createServerSocket(0, 50, InetAddress.getLoopbackAddress());
-
-        serverSocket.setEnabledCipherSuites(new String[]{cipherSuite});
-        serverSocket.setEnabledProtocols(new String[]{"TLSv1.3"});
-        
         port = serverSocket.getLocalPort();
-        clientFactory = (SSLSocketFactory) sslContext.getSocketFactory();
+        clientFactory = sslContext.getSocketFactory();
 
-        // Capture the current namedGroup and payload values for this trial
-        final String currentNamedGroup = namedGroup;
-        final int currentPayload = payload;
-        
+        startServer();
+
+        if ("cached".equals(useCache)) {
+            warmupSession();
+        }
+    }
+
+    private void startServer() {
         serverThread = new Thread(() -> {
-            while (!Thread.interrupted()) {
-                try {
-                    if (!serverReady) {
-                        serverReady = true;
+            while (running && !Thread.interrupted()) {
+                serverReady = true;
+                try (SSLSocket s = (SSLSocket) serverSocket.accept()) {
+                    s.setEnabledProtocols(new String[]{"TLSv1.3"});
+                    s.setEnabledCipherSuites(new String[]{cipherSuite});
+                    SSLParameters p = s.getSSLParameters();
+                    p.setNamedGroups(new String[]{namedGroup});
+                    s.setSSLParameters(p);
+                    s.startHandshake();
+                    byte[] b = new byte[payload];
+                    int r = s.getInputStream().read(b);
+                    if (r != -1) {
+                        s.getOutputStream().write(b, 0, r);
+                        s.getOutputStream().flush();
                     }
-                    SSLSocket socket = (SSLSocket) serverSocket.accept();
-                    socket.setEnabledProtocols(new String[]{"TLSv1.3"});
-                    socket.setEnabledCipherSuites(new String[]{cipherSuite});
-                    
-                    // Set named groups if the method is available (Java 13+)
-                    SSLParameters params = socket.getSSLParameters();
-                    params.setNamedGroups(new String[]{currentNamedGroup});
-                    socket.setSSLParameters(params);
-                    
-                    socket.startHandshake();
-                    
-                    // Read payload from client
-                    if (currentPayload > 0) {
-                        byte[] buffer = new byte[currentPayload];
-                        int totalRead = 0;
-                        while (totalRead < currentPayload) {
-                            int read = socket.getInputStream().read(buffer, totalRead, currentPayload - totalRead);
-                            if (read == -1) break;
-                            totalRead += read;
-                        }
-                    } else {
-                        socket.getInputStream().read();
-                    }
-                    
-                    // Write payload back to client
-                    if (currentPayload > 0) {
-                        byte[] buffer = new byte[currentPayload];
-                        socket.getOutputStream().write(buffer);
-                    } else {
-                        socket.getOutputStream().write(1);
-                    }
-                    socket.getOutputStream().flush();
-                    socket.close();
-                    
                 } catch (IOException e) {
-                    if (!Thread.interrupted() && !serverSocket.isClosed()) {
-                        e.printStackTrace();
-                    }
-                    if (serverSocket.isClosed()) {
-                        break;
+                    if (running) {
+                        // Expected during teardown
                     }
                 }
             }
         });
         serverThread.setDaemon(true);
         serverThread.start();
-        
-        // Wait for server to be ready
         while (!serverReady) {
-            Thread.sleep(10);
-        }
-        // Give server a bit more time to fully initialize
-        Thread.sleep(100);
-    }
-
-    @TearDown(Level.Trial)
-    public void tearDown() throws Exception {
-        if (serverThread != null) {
-            serverThread.interrupt();
-        }
-        
-        if (serverSocket != null && !serverSocket.isClosed()) {
             try {
-                serverSocket.close();
-            } catch (IOException e) {
-                // Ignore
-            }
-        }
-        
-        if (serverThread != null) {
-            try {
-                serverThread.join(1000);
+                Thread.sleep(10);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
     }
 
+    private void warmupSession() throws Exception {
+        try (SSLSocket s = (SSLSocket) clientFactory.createSocket(InetAddress.getLoopbackAddress(), port)) {
+            s.setEnabledProtocols(new String[]{"TLSv1.3"});
+            SSLParameters p = s.getSSLParameters();
+            p.setNamedGroups(new String[]{namedGroup});
+            s.setSSLParameters(p);
+            s.startHandshake();
+            // 在 TLS 1.3 中，握手完成后必须发包并收包，
+            // 才能确保收到异步发送的 NewSessionTicket
+            s.getOutputStream().write(1);
+            s.getInputStream().read();
+        }
+    }
+
     @Benchmark
     public void testHandshake() throws Exception {
-        SSLSocket clientSocket = null;
-        try {
-            clientSocket = (SSLSocket) clientFactory.createSocket(InetAddress.getLoopbackAddress(), port);
-            clientSocket.setEnabledProtocols(new String[]{"TLSv1.3"});
-            clientSocket.setEnabledCipherSuites(new String[]{cipherSuite});
+        try (SSLSocket s = (SSLSocket) clientFactory.createSocket(InetAddress.getLoopbackAddress(), port)) {
+            s.setEnabledProtocols(new String[]{"TLSv1.3"});
+            s.setEnabledCipherSuites(new String[]{cipherSuite});
+            SSLParameters p = s.getSSLParameters();
+            p.setNamedGroups(new String[]{namedGroup});
+            s.setSSLParameters(p);
 
-            SSLParameters params = clientSocket.getSSLParameters();
-            params.setNamedGroups(new String[]{namedGroup});
-            clientSocket.setSSLParameters(params);
+            s.startHandshake();
 
-            clientSocket.startHandshake();
-
-            if (payload > 0) {
-                byte[] buffer = new byte[payload];
-                clientSocket.getOutputStream().write(buffer);
-            } else {
-                clientSocket.getOutputStream().write(1);
-            }
-            clientSocket.getOutputStream().flush();
-            
-            if (payload > 0) {
-                byte[] buffer = new byte[payload];
-                int totalRead = 0;
-                while (totalRead < payload) {
-                    int read = clientSocket.getInputStream().read(buffer, totalRead, payload - totalRead);
-                    if (read == -1) break;
-                    totalRead += read;
+            byte[] w = new byte[payload];
+            s.getOutputStream().write(w);
+            s.getOutputStream().flush();
+            byte[] r = new byte[payload];
+            int total = 0;
+            while (total < payload) {
+                int read = s.getInputStream().read(r, total, payload - total);
+                if (read == -1) {
+                    break;
                 }
-            } else {
-                clientSocket.getInputStream().read();
+                total += read;
             }
 
-            if ("cached".equals(useCache)) {
-                cachedSession = clientSocket.getSession();
-            } else {
-                clientSocket.getSession().invalidate();
-            }
-        } finally {
-            if (clientSocket != null) {
-                clientSocket.close();
+            if ("non-cached".equals(useCache)) {
+                s.getSession().invalidate();
             }
         }
     }
 
+    @TearDown(Level.Trial)
+    public void tearDown() throws Exception {
+        running = false;
+        if (serverSocket != null) {
+            serverSocket.close();
+        }
+        if (serverThread != null) {
+            serverThread.interrupt();
+            serverThread.join(1000);
+        }
+    }
+
     public static void main(String[] args) throws RunnerException {
-        String testSimpleName = TLSHandshakeBenchmark.class.getSimpleName();
-        Options opt = optionsBuild(testSimpleName, testSimpleName);
+        Options opt = optionsBuild(TLSHandshakeBenchmark.class.getSimpleName(),
+                TLSHandshakeBenchmark.class.getSimpleName());
         new Runner(opt).run();
     }
 }
