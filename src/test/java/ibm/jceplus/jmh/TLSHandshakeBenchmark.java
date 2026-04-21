@@ -8,17 +8,22 @@
 
 package ibm.jceplus.jmh;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.security.KeyFactory;
 import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
@@ -43,18 +48,14 @@ import org.openjdk.jmh.runner.options.Options;
 @State(Scope.Benchmark)
 @Warmup(iterations = 3, time = 10, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 4, time = 30, timeUnit = TimeUnit.SECONDS)
-// @Warmup(iterations = 1, time = 1, timeUnit = TimeUnit.SECONDS)
-// @Measurement(iterations = 1, time = 1, timeUnit = TimeUnit.SECONDS)
 public class TLSHandshakeBenchmark extends JMHBase {
 
     private static final String PAYLOAD_1KB = "1024";
 
     @Param({"X25519", "X25519MLKEM768", "SecP256r1MLKEM768", "SecP384r1MLKEM1024"})
-    // @Param({"SecP256r1MLKEM768"})
     public String namedGroup;
 
     @Param({"cached", "non-cached"})
-    // @Param({"non-cached"})
     public String useCache;
 
     @Param({"TLS_AES_256_GCM_SHA384"})
@@ -69,144 +70,120 @@ public class TLSHandshakeBenchmark extends JMHBase {
     private int port;
     private Thread serverThread;
     private volatile boolean serverReady = false;
-    private SSLSession cachedSession;
+    private volatile boolean running = true;
+
+    // --- Hardcoded Certificates (EC secp256r1) ---
+    // 这些数据模拟了从 SSLContextTemplate 提取的标准测试证书
+    private static final String CA_CERT_PEM = 
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIBvjCCAWOgAwIBAgIJAIvFG6GbTroCMAoGCCqGSM49BAMCMDsxCzAJBgNVBAYT\n" +
+        "AlVTMQ0wCwYDVQQKDARKYXZhMR0wGwYDVQQLDBRTdW5KU1NFIFRlc3QgU2VyaXZj\n" +
+        "ZTAeFw0xODA1MjIwNzE4MTZaFw0zODA1MTcwNzE4MTZaMDsxCzAJBgNVBAYTAlVT\n" +
+        "MQ0wCwYDVQQKDARKYXZhMR0wGwYDVQQLDBRTdW5KU1NFIFRlc3QgU2VyaXZjZTBZ\n" +
+        "MBMGByqGSM49AgEGCCqGSM49AwEHA0IABBz1WeVb6gM2mh85z3QlvaB/l11b5h0v\n" +
+        "LIzmkC3DKlVukZT+ltH2Eq1oEkpXuf7QmbM0ibrUgtjsWH3mULfmcWmjUDBOMB0G\n" +
+        "A1UdDgQWBBRgz71z//oaMNKk7NNJcUbvGjWghjAfBgNVHSMEGDAWgBRgz71z//oa\n" +
+        "MNKk7NNJcUbvGjWghjAMBgNVHRMEBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCG\n" +
+        "6wluh1r2/T6L31mZXRKf9JxeSf9pIzoLj+8xQeUChQIhAJ09wAi1kV8yePLh2FD9\n" +
+        "2YEHlSQUAbwwqCDEVB5KxaqP\n" +
+        "-----END CERTIFICATE-----";
+
+    private static final String EE_CERT_STR = 
+        "MIIBqjCCAVCgAwIBAgIJAPLY8qZjgNRAMAoGCCqGSM49BAMCMDsxCzAJBgNVBAYT\n" +
+        "AlVTMQ0wCwYDVQQKDARKYXZhMR0wGwYDVQQLDBRTdW5KU1NFIFRlc3QgU2VyaXZj\n" +
+        "ZTAeFw0xODA1MjIwNzE4MTZaFw0zODA1MTcwNzE4MTZaMFUxCzAJBgNVBAYTAlVT\n" +
+        "MQ0wCwYDVQQKDARKYXZhMR0wGwYDVQQLDBRTdW5KU1NFIFRlc3QgU2VyaXZjZTEY\n" +
+        "MBYGA1UEAwwPUmVncmVzc2lvbiBUZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcD\n" +
+        "QgAEb+9n05qfXnfHUb0xtQJNS4JeSi6IjOfW5NqchvKnfJey9VkJzR7QHLuOESdf\n" +
+        "xlR7q8YIWgih3iWLGfB+wxHiOqMjMCEwHwYDVR0jBBgwFoAUYM+9c//6GjDSpOzT\n" +
+        "SXFG7xo1oIYwCgYIKoZIzj0EAwIDSAAwRQIgWpRegWXMheiD3qFdd8kMdrkLxRbq\n" +
+        "1zj8nQMEwFTUjjQCIQDRIrAjZX+YXHN9b0SoWWLPUq0HmiFIi8RwMnO//wJIGQ==";
+
+    private static final String EE_PRIV_KEY_STR = 
+        "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgn5K03bpTLjEtFQRa\n" +
+        "JUtx22gtmGEvvSUSQdimhGthdtihRANCAARv72fTmp9ed8dRvTG1Ak1Lgl5KLoiM\n" +
+        "59bk2pyG8qd8l7L1WQnNHtAcu44RJ1/GVHurxghaCKHeJYsZ8H7DEeI6";
 
     @Setup(Level.Trial)
     public void setup() throws Exception {
         super.setup("OpenJCEPlus");
 
-        generateKeyStore();
+        // 1. 初始化内存 KeyStore
+        char[] password = "password".toCharArray();
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        ks.load(null, null);
 
-        // Load keystore and truststore programmatically
-        String keystorePath = "testkeys.p12";
-        String keystorePassword = "password";
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        Certificate caCert = cf.generateCertificate(new ByteArrayInputStream(CA_CERT_PEM.getBytes()));
+        Certificate eeCert = cf.generateCertificate(new ByteArrayInputStream(Base64.getDecoder().decode(EE_CERT_STR)));
         
-        // Load the keystore
-        KeyStore keyStore = KeyStore.getInstance("PKCS12");
-        try (FileInputStream fis = new FileInputStream(keystorePath)) {
-            keyStore.load(fis, keystorePassword.toCharArray());
-        }
-        
-        // Initialize KeyManagerFactory
+        KeyFactory kf = KeyFactory.getInstance("EC");
+        PrivateKey eeKey = kf.generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(EE_PRIV_KEY_STR.replace("\n", ""))));
+
+        // 设置证书链和私钥
+        ks.setCertificateEntry("ca", caCert);
+        ks.setKeyEntry("ee", eeKey, password, new Certificate[]{eeCert});
+
+        // 2. 初始化 SSLContext
         KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(keyStore, keystorePassword.toCharArray());
-        
-        // Initialize TrustManagerFactory
+        kmf.init(ks, password);
         TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        tmf.init(keyStore);
-        
-        // Create SSLContext with the key and trust managers
+        tmf.init(ks);
+
         sslContext = SSLContext.getInstance("TLS");
         sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-        
-        SSLServerSocketFactory ssf = (SSLServerSocketFactory) sslContext.getServerSocketFactory();
-        serverSocket = (SSLServerSocket) ssf.createServerSocket(0);
 
+        // 如果是 non-cached 模式，关闭上下文缓存
+        if ("non-cached".equals(useCache)) {
+            sslContext.getClientSessionContext().setSessionCacheSize(0);
+            sslContext.getServerSessionContext().setSessionCacheSize(0);
+        }
+
+        // 3. 建立 ServerSocket
+        SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
+        serverSocket = (SSLServerSocket) ssf.createServerSocket(0, 50, InetAddress.getLoopbackAddress());
         serverSocket.setEnabledCipherSuites(new String[]{cipherSuite});
         serverSocket.setEnabledProtocols(new String[]{"TLSv1.3"});
-        
         port = serverSocket.getLocalPort();
-        clientFactory = (SSLSocketFactory) sslContext.getSocketFactory();
+        
+        clientFactory = sslContext.getSocketFactory();
 
-        // Capture the current namedGroup and payload values for this trial
         final String currentNamedGroup = namedGroup;
         final int currentPayload = payload;
-        
+
         serverThread = new Thread(() -> {
-            while (!Thread.interrupted()) {
-                try {
-                    if (!serverReady) {
-                        serverReady = true;
-                    }
-                    SSLSocket socket = (SSLSocket) serverSocket.accept();
+            while (running && !Thread.interrupted()) {
+                serverReady = true;
+                try (SSLSocket socket = (SSLSocket) serverSocket.accept()) {
                     socket.setEnabledProtocols(new String[]{"TLSv1.3"});
                     socket.setEnabledCipherSuites(new String[]{cipherSuite});
                     
-                    // Set named groups if the method is available (Java 13+)
                     SSLParameters params = socket.getSSLParameters();
                     params.setNamedGroups(new String[]{currentNamedGroup});
                     socket.setSSLParameters(params);
                     
                     socket.startHandshake();
                     
-                    // Read payload from client
-                    if (currentPayload > 0) {
-                        byte[] buffer = new byte[currentPayload];
-                        int totalRead = 0;
-                        while (totalRead < currentPayload) {
-                            int read = socket.getInputStream().read(buffer, totalRead, currentPayload - totalRead);
-                            if (read == -1) break;
-                            totalRead += read;
-                        }
-                    } else {
-                        socket.getInputStream().read();
-                    }
-                    
-                    // Write payload back to client
-                    if (currentPayload > 0) {
-                        byte[] buffer = new byte[currentPayload];
-                        socket.getOutputStream().write(buffer);
-                    } else {
-                        socket.getOutputStream().write(1);
-                    }
+                    byte[] buffer = new byte[currentPayload];
+                    socket.getInputStream().read(buffer);
+                    socket.getOutputStream().write(buffer);
                     socket.getOutputStream().flush();
-                    socket.close();
-                    
                 } catch (IOException e) {
-                    if (!Thread.interrupted() && !serverSocket.isClosed()) {
-                        // Only log if not intentionally interrupted or socket closed
-                        e.printStackTrace();
-                    }
-                    // Exit the loop if socket is closed
-                    if (serverSocket.isClosed()) {
-                        break;
-                    }
+                    if (running) e.printStackTrace();
                 }
             }
         });
         serverThread.setDaemon(true);
         serverThread.start();
-        
-        // Wait for server to be ready
-        while (!serverReady) {
-            Thread.sleep(10);
-        }
-        // Give server a bit more time to fully initialize
-        Thread.sleep(100);
-    }
 
-    @TearDown(Level.Trial)
-    public void tearDown() throws Exception {
-        // Interrupt the server thread first
-        if (serverThread != null) {
-            serverThread.interrupt();
-        }
-        
-        // Then close the server socket to unblock accept()
-        if (serverSocket != null && !serverSocket.isClosed()) {
-            try {
-                serverSocket.close();
-            } catch (IOException e) {
-                // Ignore close exceptions during teardown
-            }
-        }
-        
-        // Wait for the server thread to finish
-        if (serverThread != null) {
-            try {
-                serverThread.join(1000); // Wait up to 1 second for thread to finish
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+        while (!serverReady) { 
+            Thread.sleep(10); 
         }
     }
 
     @Benchmark
     public void testHandshake() throws Exception {
-        SSLSocket clientSocket = null;
-        try {
-            // Create a new socket for each handshake
-            clientSocket = (SSLSocket) clientFactory.createSocket("localhost", port);
+        try (SSLSocket clientSocket = (SSLSocket) clientFactory.createSocket(InetAddress.getLoopbackAddress(), port)) {
             clientSocket.setEnabledProtocols(new String[]{"TLSv1.3"});
             clientSocket.setEnabledCipherSuites(new String[]{cipherSuite});
 
@@ -216,78 +193,37 @@ public class TLSHandshakeBenchmark extends JMHBase {
 
             clientSocket.startHandshake();
 
-            // Write payload to server
-            if (payload > 0) {
-                byte[] buffer = new byte[payload];
-                clientSocket.getOutputStream().write(buffer);
-            } else {
-                clientSocket.getOutputStream().write(1);
-            }
+            // Payload 读写
+            byte[] buffer = new byte[payload];
+            clientSocket.getOutputStream().write(buffer);
             clientSocket.getOutputStream().flush();
             
-            // Read payload back from server
-            // In TLS 1.3, the server sends NewSessionTicket after handshake completion.
-            // Reading from the socket ensures we receive the NewSessionTicket before closing.
-            // This is critical for session resumption to work properly.
-            if (payload > 0) {
-                byte[] buffer = new byte[payload];
-                int totalRead = 0;
-                while (totalRead < payload) {
-                    int read = clientSocket.getInputStream().read(buffer, totalRead, payload - totalRead);
-                    if (read == -1) break;
-                    totalRead += read;
-                }
-            } else {
-                clientSocket.getInputStream().read();
+            int totalRead = 0;
+            while (totalRead < payload) {
+                int read = clientSocket.getInputStream().read(buffer, totalRead, payload - totalRead);
+                if (read == -1) break;
+                totalRead += read;
             }
 
-            if ("cached".equals(useCache)) {
-                // Cache the session for reuse in subsequent handshakes
-                cachedSession = clientSocket.getSession();
-            } else {
-                // Invalidate the session to force full handshake
+            if ("non-cached".equals(useCache)) {
                 clientSocket.getSession().invalidate();
-            }
-        } finally {
-            if (clientSocket != null) {
-                clientSocket.close();
             }
         }
     }
 
-    private void generateKeyStore() throws Exception {
-        File keystoreFile = new File("testkeys.p12");
-        if (keystoreFile.exists()) {
-            return; 
-        }
-
-        System.out.println("Generating testkeys keystore with EC...");
-        ProcessBuilder processBuilder = new ProcessBuilder(
-                "keytool",
-                "-genkeypair",
-                "-keyalg", "EC",
-                "-keysize", "256",
-                "-validity", "365",
-                "-keystore", "testkeys.p12",
-                "-storetype", "PKCS12",
-                "-storepass", "password",
-                "-keypass", "password",
-                "-dname", "CN=localhost"
-        );
-
-        processBuilder.inheritIO();
-        Process process = processBuilder.start();
-        int exitCode = process.waitFor();
-
-        if (exitCode != 0) {
-            throw new RuntimeException("Failed to generate testkeys using keytool. Exit code: " + exitCode);
+    @TearDown(Level.Trial)
+    public void tearDown() throws Exception {
+        running = false;
+        if (serverSocket != null) serverSocket.close();
+        if (serverThread != null) {
+            serverThread.interrupt();
+            serverThread.join(1000);
         }
     }
 
     public static void main(String[] args) throws RunnerException {
         String testSimpleName = TLSHandshakeBenchmark.class.getSimpleName();
         Options opt = optionsBuild(testSimpleName, testSimpleName);
-
         new Runner(opt).run();
     }
 }
