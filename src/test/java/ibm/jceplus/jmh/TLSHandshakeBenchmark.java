@@ -47,7 +47,7 @@ public class TLSHandshakeBenchmark extends JMHBase {
     private static final String PAYLOAD_1KB = "1024";
 
     @State(Scope.Benchmark)
-    public static class ServerState {
+    public static class ServerState extends JMHBase {
         @Param({"X25519", "X25519MLKEM768", "SecP256r1MLKEM768", "SecP384r1MLKEM1024"})
         public String namedGroup;
 
@@ -65,6 +65,7 @@ public class TLSHandshakeBenchmark extends JMHBase {
 
         @Setup(Level.Trial)
         public void setup() throws Exception {
+            super.setup("OpenJCEPlus");
             generateKeyStore();
 
             // Load keystore and truststore programmatically
@@ -229,19 +230,26 @@ public class TLSHandshakeBenchmark extends JMHBase {
         public String useCache;
 
         @Setup(Level.Trial)
-        public void setupTrial() throws Exception {
-            // Initial setup for cached mode
+        public void setupTrial(ServerState server) throws Exception {
+            // Always initialize at trial level
+            initializeClientContext();
+            
+            // For cached mode, perform a warm-up connection to establish session ticket
             if ("cached".equals(useCache)) {
-                initializeClientContext();
+                performWarmupConnection(server);
             }
         }
 
         @Setup(Level.Iteration)
-        public void setupIteration() throws Exception {
-            // For non-cached mode, recreate context per iteration (not per invocation)
-            // This provides a good balance between clearing cache and not adding too much overhead
+        public void setupIteration(ServerState server) throws Exception {
+            // For non-cached mode, recreate context per iteration
+            // This clears the session cache without excessive per-invocation overhead
             if ("non-cached".equals(useCache)) {
                 initializeClientContext();
+            } else {
+                // For cached mode, do a warm-up connection at the start of each iteration
+                // to ensure we have a valid session ticket
+                performWarmupConnection(server);
             }
         }
 
@@ -264,11 +272,34 @@ public class TLSHandshakeBenchmark extends JMHBase {
             clientContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
             clientFactory = (SSLSocketFactory) clientContext.getSocketFactory();
         }
-    }
-
-    @Setup(Level.Trial)
-    public void setup() throws Exception {
-        super.setup("OpenJCEPlus");
+        
+        private void performWarmupConnection(ServerState server) throws Exception {
+            // Perform a connection to establish/refresh session ticket
+            SSLSocket warmupSocket = null;
+            try {
+                warmupSocket = (SSLSocket) clientFactory.createSocket("localhost", server.port);
+                warmupSocket.setEnabledProtocols(new String[]{"TLSv1.3"});
+                warmupSocket.setEnabledCipherSuites(new String[]{server.cipherSuite});
+                
+                SSLParameters params = warmupSocket.getSSLParameters();
+                params.setNamedGroups(new String[]{server.namedGroup});
+                warmupSocket.setSSLParameters(params);
+                
+                warmupSocket.startHandshake();
+                
+                // Exchange data to ensure session ticket is received
+                warmupSocket.getOutputStream().write(1);
+                warmupSocket.getOutputStream().flush();
+                warmupSocket.getInputStream().read();
+                
+                // Small delay to ensure session ticket is processed
+                Thread.sleep(50);
+            } finally {
+                if (warmupSocket != null) {
+                    warmupSocket.close();
+                }
+            }
+        }
     }
 
     @Benchmark
