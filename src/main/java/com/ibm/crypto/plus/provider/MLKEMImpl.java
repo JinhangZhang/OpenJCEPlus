@@ -38,18 +38,22 @@ public class MLKEMImpl implements KEMSpi {
         this.alg = alg;
     }
     
-    private int getEncapsulationLength() {
+    private int getEncapsulationLength(String algorithm) {
         int size = 0;
 
-        switch (this.alg) {
+        switch (algorithm) {
             case "ML-KEM-512":
                 size = 768;
                 break;
             case "ML-KEM-768":
                 size = 1088;
                 break;
-            default:
+            case "ML-KEM-1024":
                 size = 1568;
+                break;
+            default:
+                // If algorithm is generic "ML-KEM", default to ML-KEM-768
+                size = 1088;
         }
         return size;
     }
@@ -72,8 +76,15 @@ public class MLKEMImpl implements KEMSpi {
 
         if (!(pubKey instanceof PQCPublicKey)) {
             // Try and convert this key to a usage PQCPublicKey
+            // First verify it's an ML-KEM key
+            String keyAlgorithm = publicKey.getAlgorithm();
+            if (keyAlgorithm == null || !keyAlgorithm.startsWith("ML-KEM")) {
+                throw new InvalidKeyException("unsupported key");
+            }
+            
+            // Use the key's actual algorithm, not the generic "ML-KEM"
             try {
-                KeyFactory kf = KeyFactory.getInstance(this.alg, this.provider.getName());
+                KeyFactory kf = KeyFactory.getInstance(keyAlgorithm, this.provider.getName());
                 EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKey.getEncoded());
                 pubKey = kf.generatePublic(publicKeySpec);
        
@@ -105,7 +116,9 @@ public class MLKEMImpl implements KEMSpi {
 
         @Override
         public KEM.Encapsulated engineEncapsulate(int from, int to, String algorithm) {
-            int encapLen = getEncapsulationLength();
+            // Get the actual algorithm from the public key
+            String keyAlgorithm = publicKey.getAlgorithm();
+            int encapLen = getEncapsulationLength(keyAlgorithm);
             byte[] encapsulation = new byte[encapLen];
             byte[] secret = new byte[SECRETSIZE];
 
@@ -130,7 +143,8 @@ public class MLKEMImpl implements KEMSpi {
 
         @Override
         public int engineEncapsulationSize() {
-            return getEncapsulationLength(); 
+            String keyAlgorithm = publicKey.getAlgorithm();
+            return getEncapsulationLength(keyAlgorithm);
         }
 
         @Override
@@ -155,9 +169,16 @@ public class MLKEMImpl implements KEMSpi {
 
         if (!(privKey instanceof PQCPrivateKey)) {
             // Try and convert this key to a usage PQCPrivateKey
+            // First verify it's an ML-KEM key
+            String keyAlgorithm = privateKey.getAlgorithm();
+            if (keyAlgorithm == null || !keyAlgorithm.startsWith("ML-KEM")) {
+                throw new InvalidKeyException("unsupported key");
+            }
+            
+            // Use the key's actual algorithm, not the generic "ML-KEM"
             byte[] encoding = null;
             try {
-                KeyFactory kf = KeyFactory.getInstance(this.alg, this.provider.getName());
+                KeyFactory kf = KeyFactory.getInstance(keyAlgorithm, this.provider.getName());
                 encoding = privateKey.getEncoded();
                 PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(encoding);
                 privKey = kf.generatePrivate(privateKeySpec);
@@ -197,6 +218,17 @@ public class MLKEMImpl implements KEMSpi {
             if (algorithm == null || cipherText == null) {
                 throw new NullPointerException();
             }
+
+            // Validate encapsulation length matches the key's algorithm
+            String keyAlgorithm = privateKey.getAlgorithm();
+            int expectedEncapLen = getEncapsulationLength(keyAlgorithm);
+            if (cipherText.length != expectedEncapLen) {
+                throw new DecapsulateException(
+                    "Invalid key encapsulation message length: expected " +
+                    expectedEncapLen + " bytes for " + keyAlgorithm +
+                    ", but got " + cipherText.length + " bytes");
+            }
+
             try {
                 secret = OJPKEM.KEM_decapsulate(((PQCPrivateKey) this.privateKey).getPQCKey().getPKeyId(),
                         cipherText, provider);
@@ -210,8 +242,8 @@ public class MLKEMImpl implements KEMSpi {
 
         @Override
         public int engineEncapsulationSize() {
-
-            return getEncapsulationLength();
+            String keyAlgorithm = privateKey.getAlgorithm();
+            return getEncapsulationLength(keyAlgorithm);
         }
 
         @Override
@@ -220,6 +252,13 @@ public class MLKEMImpl implements KEMSpi {
             return this.size;
         }
 
+    }
+
+    public static final class MLKEM extends MLKEMImpl {
+
+        public MLKEM(OpenJCEPlusProvider provider) {
+            super(provider, "ML-KEM");
+        }
     }
 
     public static final class MLKEM512 extends MLKEMImpl {

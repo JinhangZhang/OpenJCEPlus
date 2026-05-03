@@ -210,6 +210,57 @@ public class BaseTestKEM extends BaseTestJunit5 {
         }
     }
 
+    /**
+     * Tests that decapsulation fails with a DecapsulateException when attempting to decapsulate
+     * an encapsulation message that was created with a different ML-KEM algorithm variant.
+     *
+     * <p>This test verifies that the KEM implementation properly validates the encapsulation
+     * message length during decapsulation. Each ML-KEM variant (ML-KEM-512, ML-KEM-768, ML-KEM-1024)
+     * produces encapsulation messages of different lengths. When a decapsulator receives an
+     * encapsulation message with an incorrect length (from a different variant), it should
+     * reject it with a DecapsulateException containing an appropriate error message.
+     *
+     * <p>Test procedure:
+     * <ol>
+     *   <li>Generate a key pair using the first algorithm (keyAlgorithm)</li>
+     *   <li>Generate a different key pair using a second algorithm (wrongAlgorithm)</li>
+     *   <li>Create an encapsulation using the second key pair (wrong length for first algorithm)</li>
+     *   <li>Attempt to decapsulate using the first key pair's private key</li>
+     *   <li>Verify that a DecapsulateException is thrown with the expected error message</li>
+     * </ol>
+     *
+     * @param keyAlgorithm the ML-KEM algorithm variant to use for the decapsulation key pair
+     * @param wrongAlgorithm the ML-KEM algorithm variant to use for creating the encapsulation
+     *                       (produces wrong length for keyAlgorithm)
+     * @throws Exception if an unexpected error occurs during test execution
+     */
+    @ParameterizedTest
+    @CsvSource({"ML-KEM-512,ML-KEM-768", "ML-KEM-768,ML-KEM-1024", "ML-KEM-1024,ML-KEM-512"})
+    public void testKEMInvalidEncapsulationLength(String keyAlgorithm, String wrongAlgorithm) throws Exception {
+        // Generate a key pair with one algorithm
+        KeyPair keyPair = generateKeyPair(keyAlgorithm);
+        
+        // Create encapsulation with a different algorithm (wrong length)
+        KEM kemWrong = KEM.getInstance(wrongAlgorithm, getProviderName());
+        KeyPair wrongKeyPair = generateKeyPair(wrongAlgorithm);
+        KEM.Encapsulator encapsulator = kemWrong.newEncapsulator(wrongKeyPair.getPublic());
+        KEM.Encapsulated encapsulated = encapsulator.encapsulate(0, 32, "AES");
+        
+        // Try to decapsulate with the original key (wrong length)
+        KEM kem = KEM.getInstance(keyAlgorithm, getProviderName());
+        KEM.Decapsulator decapsulator = kem.newDecapsulator(keyPair.getPrivate());
+        
+        try {
+            decapsulator.decapsulate(encapsulated.encapsulation(), 0, 32, "AES");
+            fail("testKEMInvalidEncapsulationLength failed - Invalid encapsulation length did not cause a DecapsulateException for " + keyAlgorithm + " with " + wrongAlgorithm + " encapsulation");
+        } catch (javax.crypto.DecapsulateException de) {
+            assertTrue(de.getMessage().contains("Invalid key encapsulation message length"),
+                "Expected error message about invalid encapsulation length, but got: " + de.getMessage());
+            assertTrue(de.getMessage().contains(keyAlgorithm),
+                "Expected error message to mention key algorithm " + keyAlgorithm + ", but got: " + de.getMessage());
+        }
+    }
+
     protected KeyPair generateKeyPair(String Algorithm) throws Exception {
         pqcKeyPairGen = KeyPairGenerator.getInstance(Algorithm, getProviderName());
 
