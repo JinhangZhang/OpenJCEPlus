@@ -30,13 +30,16 @@ abstract class XDHKeyAgreement extends KeyAgreementSpi {
 
     private static final int SECRET_BUFFER_SIZE_X25519 = 32;
     private static final int SECRET_BUFFER_SIZE_X448 = 56;
+    private static final String X25519_NAME = "X25519";
+    private static final String X448_NAME = "X448";
 
     private OpenJCEPlusProvider provider = null;
     private long genCtx;
     private XECKey ockXecKeyPub = null;
     private XECKey ockXecKeyPriv = null;
-    private byte[] secret = {};
+    private byte[] secret = null;
     private String alg = null;
+    private int secretBufferSize = 0; // Cached buffer size for performance
 
     XDHKeyAgreement(OpenJCEPlusProvider provider) {
         this.provider = provider;
@@ -65,65 +68,69 @@ abstract class XDHKeyAgreement extends KeyAgreementSpi {
     @Override
     protected Key engineDoPhase(Key key, boolean lastPhase)
             throws InvalidKeyException, IllegalStateException {
-        if (!(key instanceof XECPublicKey)) {
-            throw new InvalidKeyException("Unsupported key type");
-        }
-        if (ockXecKeyPriv == null)
+        // Fast-path: check for null private key first (most common error case)
+        if (ockXecKeyPriv == null) {
             throw new IllegalStateException(
                     "object is not initialized correctly (private key is not received)");
+        }
+        
+        // Fast-path: check lastPhase early to avoid unnecessary work
+        if (!lastPhase) {
+            throw new IllegalStateException("XDH can only be between two parties.");
+        }
 
-        if (!(key instanceof XDHPublicKeyImpl)) {
+        // Fast-path: optimize for already-translated keys (common case in benchmarks)
+        XDHPublicKeyImpl xdhPublicKeyImpl;
+        if (key instanceof XDHPublicKeyImpl) {
+            xdhPublicKeyImpl = (XDHPublicKeyImpl) key;
+        } else if (key instanceof XECPublicKey) {
             try {
                 key = (XDHPublicKeyImpl) XDHKeyFactory.toXECKey(this.provider, this.alg, key);
+                xdhPublicKeyImpl = (XDHPublicKeyImpl) key;
             } catch (ClassCastException cce) {
                 throw new InvalidKeyException("Translated key is not an instance of XDHPublicKeyImpl", cce);
             } catch (Exception exception) {
                 throw new InvalidKeyException("Unable to translate key", exception);
             }
+        } else {
+            throw new InvalidKeyException("Unsupported key type");
         }
 
-        XDHPublicKeyImpl xdhPublicKeyImpl = (XDHPublicKeyImpl) key;
-
-        //Validate algs match for key and keyagreement
-        if (this.alg != null
-                && !(((NamedParameterSpec) ((XDHPublicKeyImpl) key).getParams())
-                        .getName().equals(this.alg))) {
-            throw new InvalidKeyException("Parameters must be " + this.alg);
+        // Validate algorithm match if specified (use cached comparison)
+        if (this.alg != null) {
+            String keyAlg = ((NamedParameterSpec) xdhPublicKeyImpl.getParams()).getName();
+            if (!this.alg.equals(keyAlg)) {
+                throw new InvalidKeyException("Parameters must be " + this.alg);
+            }
         }
 
         ockXecKeyPub = xdhPublicKeyImpl.getOCKKey();
 
-        // we've received a public key (from one of the other parties),
-        // so we are ready to create the secret, which may be an
-        // intermediate secret, in which case we wrap it into a
-        // Diffie-Hellman public key object and return it.
-        if (lastPhase == false) {
-            throw new IllegalStateException("XDH can only be between two parties.");
-        }
-
         try {
-            int secrectBufferSize = 0;
-            String curveName = ((NamedParameterSpec) xdhPublicKeyImpl.getParams()).getName();
-            if (NamedParameterSpec.X25519.getName().equalsIgnoreCase(curveName)) {
-                secrectBufferSize = SECRET_BUFFER_SIZE_X25519; // X25519 secret buffer size
-            } else if (NamedParameterSpec.X448.getName().equalsIgnoreCase(curveName)) {
-                secrectBufferSize = SECRET_BUFFER_SIZE_X448; // X448 secret buffer size
-            } else {
-                secrectBufferSize = 0; // Let OCK decide the size
+            // Use cached buffer size if available, otherwise compute it
+            int bufferSize = this.secretBufferSize;
+            if (bufferSize == 0) {
+                String curveName = ((NamedParameterSpec) xdhPublicKeyImpl.getParams()).getName();
+                if (X25519_NAME.equals(curveName)) {
+                    bufferSize = SECRET_BUFFER_SIZE_X25519;
+                } else if (X448_NAME.equals(curveName)) {
+                    bufferSize = SECRET_BUFFER_SIZE_X448;
+                }
             }
+            
             this.secret = XECKey.computeECDHSecret(genCtx,
-                    ockXecKeyPub.getPKeyId(), ockXecKeyPriv.getPKeyId(), secrectBufferSize, provider);
+                    ockXecKeyPub.getPKeyId(), ockXecKeyPriv.getPKeyId(), bufferSize, provider);
         } catch (OCKException e) {
-            //Validate the secret value for a small order point condition.
-            byte orValue = (byte) 0;
-            for (int i = 0; i < secret.length; i++) {
-                orValue |= secret[i];
+            // Optimized small order point validation using bitwise OR
+            if (secret != null && secret.length > 0) {
+                byte orValue = 0;
+                for (byte b : secret) {
+                    orValue |= b;
+                }
+                if (orValue == 0) {
+                    throw new InvalidKeyException("Point has small order.", e);
+                }
             }
-
-            if (orValue == (byte) 0) {
-                throw new InvalidKeyException("Point has small order.", e);
-            }
-
             throw new IllegalStateException("Failed to generate secret", e);
         } catch (Exception e) {
             throw new InvalidKeyException("Failed to generate secret", e);
@@ -228,18 +235,21 @@ abstract class XDHKeyAgreement extends KeyAgreementSpi {
     protected void engineInit(Key key, AlgorithmParameterSpec params, SecureRandom random)
             throws InvalidKeyException, InvalidAlgorithmParameterException {
         
-        if (!(key instanceof XECPrivateKey)) {
-            throw new InvalidKeyException("Unsupported key type");
-        }
-
-        if (!(key instanceof XDHPrivateKeyImpl)) {
+        // Fast-path: optimize for already-translated keys
+        XDHPrivateKeyImpl xdhPrivateKeyImpl;
+        if (key instanceof XDHPrivateKeyImpl) {
+            xdhPrivateKeyImpl = (XDHPrivateKeyImpl) key;
+        } else if (key instanceof XECPrivateKey) {
             try {
                 key = (XDHPrivateKeyImpl) XDHKeyFactory.toXECKey(this.provider, this.alg, key);
+                xdhPrivateKeyImpl = (XDHPrivateKeyImpl) key;
             } catch (ClassCastException cce) {
                 throw new InvalidKeyException("Translated key is not an instance of XDHPrivateKeyImpl", cce);
             } catch (Exception exception) {
                 throw new InvalidKeyException("Unable to translate key", exception);
             }
+        } else {
+            throw new InvalidKeyException("Unsupported key type");
         }
 
         // Check if parameter is a valid NamedParameterSpec instance
@@ -254,18 +264,23 @@ abstract class XDHKeyAgreement extends KeyAgreementSpi {
             }
         }
 
-        XDHPrivateKeyImpl xdhPrivateKeyImpl = (XDHPrivateKeyImpl) key;
-
-        //Validate algs match for key and keyfactory
-        if (this.alg != null
-                && !(((NamedParameterSpec) ((XDHPrivateKeyImpl) key).getParams())
-                        .getName().equals(this.alg))) {
-            throw new InvalidKeyException("Parameters must be " + this.alg + " but is " + ((NamedParameterSpec) ((XDHPrivateKeyImpl) key).getParams())
-            .getName());
+        // Validate algorithm match and cache buffer size for performance
+        if (this.alg != null) {
+            String keyAlg = ((NamedParameterSpec) xdhPrivateKeyImpl.getParams()).getName();
+            if (!this.alg.equals(keyAlg)) {
+                throw new InvalidKeyException("Parameters must be " + this.alg + " but is " + keyAlg);
+            }
+            // Cache the secret buffer size based on algorithm to avoid repeated lookups
+            if (X25519_NAME.equals(this.alg)) {
+                this.secretBufferSize = SECRET_BUFFER_SIZE_X25519;
+            } else if (X448_NAME.equals(this.alg)) {
+                this.secretBufferSize = SECRET_BUFFER_SIZE_X448;
+            }
         }
 
         ockXecKeyPriv = xdhPrivateKeyImpl.getOCKKey();
         ockXecKeyPub = null; // in case object is being reused
+        secret = null; // reset secret state
     }
 
     public static final class X25519 extends XDHKeyAgreement {
