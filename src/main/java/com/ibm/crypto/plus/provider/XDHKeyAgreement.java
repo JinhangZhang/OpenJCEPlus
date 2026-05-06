@@ -37,6 +37,7 @@ abstract class XDHKeyAgreement extends KeyAgreementSpi {
     private XECKey ockXecKeyPriv = null;
     private byte[] secret = {};
     private String alg = null;
+    private int secretBufferSize = 0; // Cached buffer size for performance
 
     XDHKeyAgreement(OpenJCEPlusProvider provider) {
         this.provider = provider;
@@ -102,17 +103,9 @@ abstract class XDHKeyAgreement extends KeyAgreementSpi {
         }
 
         try {
-            int secrectBufferSize = 0;
-            String curveName = ((NamedParameterSpec) xdhPublicKeyImpl.getParams()).getName();
-            if (NamedParameterSpec.X25519.getName().equalsIgnoreCase(curveName)) {
-                secrectBufferSize = SECRET_BUFFER_SIZE_X25519; // X25519 secret buffer size
-            } else if (NamedParameterSpec.X448.getName().equalsIgnoreCase(curveName)) {
-                secrectBufferSize = SECRET_BUFFER_SIZE_X448; // X448 secret buffer size
-            } else {
-                secrectBufferSize = 0; // Let OCK decide the size
-            }
+            // Use cached buffer size from initialization to avoid repeated lookups
             this.secret = XECKey.computeECDHSecret(genCtx,
-                    ockXecKeyPub.getPKeyId(), ockXecKeyPriv.getPKeyId(), secrectBufferSize, provider);
+                    ockXecKeyPub.getPKeyId(), ockXecKeyPriv.getPKeyId(), this.secretBufferSize, provider);
         } catch (OCKException e) {
             //Validate the secret value for a small order point condition.
             byte orValue = (byte) 0;
@@ -266,6 +259,16 @@ abstract class XDHKeyAgreement extends KeyAgreementSpi {
 
         ockXecKeyPriv = xdhPrivateKeyImpl.getOCKKey();
         ockXecKeyPub = null; // in case object is being reused
+        
+        // Cache secret buffer size to avoid repeated lookups in engineDoPhase
+        String curveName = ((NamedParameterSpec) xdhPrivateKeyImpl.getParams()).getName();
+        if (NamedParameterSpec.X25519.getName().equalsIgnoreCase(curveName)) {
+            this.secretBufferSize = SECRET_BUFFER_SIZE_X25519;
+        } else if (NamedParameterSpec.X448.getName().equalsIgnoreCase(curveName)) {
+            this.secretBufferSize = SECRET_BUFFER_SIZE_X448;
+        } else {
+            this.secretBufferSize = 0;
+        }
     }
 
     public static final class X25519 extends XDHKeyAgreement {
