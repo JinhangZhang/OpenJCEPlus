@@ -70,10 +70,8 @@ public final class AESKeyGenerator extends KeyGeneratorSpi {
     protected void engineInit(SecureRandom random) {
         // If in FIPS mode, SecureRandom must be internal and FIPS approved.
         // For FIPS mode, user provided random generator will be ignored.
-        //
-        if (cryptoRandom == null) {
-            cryptoRandom = provider.getSecureRandom(random);
-        }
+        // Performance: Unconditionally update to avoid redundant null check
+        cryptoRandom = provider.getSecureRandom(random);
     }
 
     /**
