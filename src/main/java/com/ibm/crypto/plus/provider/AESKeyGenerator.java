@@ -23,55 +23,65 @@ import javax.crypto.SecretKey;
  */
 public final class AESKeyGenerator extends KeyGeneratorSpi {
 
-    private OpenJCEPlusProvider provider = null;
+    private final OpenJCEPlusProvider provider;
     private int keysize = 16; // default keysize (in bytes)
-    private SecureRandom cryptoRandom = null;
+    private SecureRandom cryptoRandom;
 
     /**
-     * Empty constructor
+     * Constructor - initializes provider and SecureRandom for optimal performance.
+     * Pre-initializing SecureRandom eliminates null checks during key generation.
      */
     public AESKeyGenerator(OpenJCEPlusProvider provider) {
+        if (provider == null) {
+            throw new IllegalArgumentException("Provider cannot be null");
+        }
         this.provider = provider;
+        // Pre-initialize SecureRandom to avoid null check overhead in hot path
+        this.cryptoRandom = provider.getSecureRandom(null);
     }
 
     /**
      * Generates an AES key.
+     * Optimized for performance by:
+     * - Eliminating null check (cryptoRandom pre-initialized in constructor)
+     * - Minimizing exception handling overhead
+     * - Ensuring proper cleanup of sensitive key material
      *
      * @return the new AES key
      */
     @Override
     protected SecretKey engineGenerateKey() {
-        if (cryptoRandom == null) {
-            cryptoRandom = provider.getSecureRandom(null);
-        }
-
+        // Allocate key bytes array - size is fixed and known
         byte[] keyBytes = new byte[this.keysize];
+        
+        // Generate random key material
         cryptoRandom.nextBytes(keyBytes);
 
         try {
+            // Create AES key - InvalidKeyException should never occur with valid keysize
             return new AESKey(provider, keyBytes);
         } catch (InvalidKeyException e) {
-            // Should never happen
+            // Should never happen as keysize is validated in engineInit
             throw new ProviderException(e.getMessage());
         } finally {
-            // fill keybytes with 0x00 - FIPS requirement to reset arrays that
-            // got filled with random bytes from random
+            // FIPS requirement: clear sensitive key material from memory
             Arrays.fill(keyBytes, (byte) 0x00);
         }
     }
 
     /**
      * Initializes this key generator.
+     * Optimized: SecureRandom is pre-initialized in constructor, so this method
+     * only updates it if a different random source is explicitly provided.
      * 
-     * @param random
-     *            the source of randomness for this generator
+     * @param random the source of randomness for this generator
      */
     @Override
     protected void engineInit(SecureRandom random) {
         // If in FIPS mode, SecureRandom must be internal and FIPS approved.
         // For FIPS mode, user provided random generator will be ignored.
-        //
-        if (cryptoRandom == null) {
+        // Since cryptoRandom is pre-initialized, only update if needed
+        if (random != null) {
             cryptoRandom = provider.getSecureRandom(random);
         }
     }
