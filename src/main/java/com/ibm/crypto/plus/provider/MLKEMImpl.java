@@ -38,6 +38,29 @@ public class MLKEMImpl implements KEMSpi {
         this.alg = alg;
     }
     
+    /**
+     * Validates that the key's algorithm matches this KEM instance's algorithm.
+     * The generic "ML-KEM" instance accepts keys from any ML-KEM variant.
+     * Specific instances (ML-KEM-512, ML-KEM-768, ML-KEM-1024) accept:
+     * - Keys with matching specific algorithm (e.g., ML-KEM-512)
+     * - Keys with generic "ML-KEM" algorithm (for interop with providers that use generic naming)
+     *
+     * @param keyAlgorithm the algorithm from the key
+     * @throws InvalidKeyException if the key algorithm doesn't match the instance algorithm
+     */
+    private void validateKeyAlgorithm(String keyAlgorithm) throws InvalidKeyException {
+        // Generic ML-KEM instance accepts any ML-KEM variant key algorithm
+        if (this.alg.equals("ML-KEM")) {
+            return;
+        }
+        
+        // Specific instance accepts exact match or generic "ML-KEM"
+        if (!this.alg.equals(keyAlgorithm) && !keyAlgorithm.equals("ML-KEM")) {
+            throw new InvalidKeyException("Key algorithm " + keyAlgorithm +
+                " does not match KEM instance algorithm " + this.alg);
+        }
+    }
+    
     private int getEncapsulationLength(String algorithm) {
         int size = 0;
 
@@ -82,6 +105,9 @@ public class MLKEMImpl implements KEMSpi {
                 throw new InvalidKeyException("unsupported key");
             }
             
+            // Validate algorithm match (unless this is the generic ML-KEM instance)
+            validateKeyAlgorithm(keyAlgorithm);
+            
             // Use the key's actual algorithm, not the generic "ML-KEM"
             try {
                 KeyFactory kf = KeyFactory.getInstance(keyAlgorithm, this.provider.getName());
@@ -91,6 +117,9 @@ public class MLKEMImpl implements KEMSpi {
             } catch (Exception e) {
                 throw new InvalidKeyException("unsupported key", e);
             }
+        } else {
+            // Key is already a PQCPublicKey, validate algorithm match
+            validateKeyAlgorithm(pubKey.getAlgorithm());
         }
 
         if (spec != null) {
@@ -175,6 +204,9 @@ public class MLKEMImpl implements KEMSpi {
                 throw new InvalidKeyException("unsupported key");
             }
             
+            // Validate algorithm match (unless this is the generic ML-KEM instance)
+            validateKeyAlgorithm(keyAlgorithm);
+            
             // Use the key's actual algorithm, not the generic "ML-KEM"
             byte[] encoding = null;
             try {
@@ -188,6 +220,9 @@ public class MLKEMImpl implements KEMSpi {
                 Arrays.fill(encoding, (byte) 0);
             }
 
+        } else {
+            // Key is already a PQCPrivateKey, validate algorithm match
+            validateKeyAlgorithm(privKey.getAlgorithm());
         }
 
         if (spec != null) {

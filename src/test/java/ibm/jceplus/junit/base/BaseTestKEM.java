@@ -21,6 +21,7 @@ import javax.crypto.SecretKey;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -259,6 +260,111 @@ public class BaseTestKEM extends BaseTestJunit5 {
             assertTrue(de.getMessage().contains(keyAlgorithm),
                 "Expected error message to mention key algorithm " + keyAlgorithm + ", but got: " + de.getMessage());
         }
+    }
+
+    /**
+     * Tests that KEM operations fail with InvalidKeyException when the key algorithm
+     * does not match the KEM instance algorithm.
+     *
+     * <p>This test verifies that when you create a KEM instance for a specific ML-KEM variant
+     * (e.g., ML-KEM-768), you cannot use keys from a different variant (e.g., ML-KEM-512).
+     * The implementation should validate that the key's algorithm matches the KEM instance's
+     * algorithm and reject mismatched keys.
+     *
+     * <p>Test procedure:
+     * <ol>
+     *   <li>Create a KEM instance for one algorithm (e.g., ML-KEM-768)</li>
+     *   <li>Generate a key pair using a different algorithm (e.g., ML-KEM-512)</li>
+     *   <li>Attempt to create an encapsulator with the mismatched public key</li>
+     *   <li>Verify that an InvalidKeyException is thrown</li>
+     *   <li>Attempt to create a decapsulator with the mismatched private key</li>
+     *   <li>Verify that an InvalidKeyException is thrown</li>
+     * </ol>
+     *
+     * @param kemAlgorithm the ML-KEM algorithm variant to use for the KEM instance
+     * @param keyAlgorithm the ML-KEM algorithm variant to use for generating the key pair
+     * @throws Exception if an unexpected error occurs during test execution
+     */
+    @ParameterizedTest
+    @CsvSource({
+        "ML-KEM-512,ML-KEM-768",
+        "ML-KEM-512,ML-KEM-1024",
+        "ML-KEM-768,ML-KEM-512",
+        "ML-KEM-768,ML-KEM-1024",
+        "ML-KEM-1024,ML-KEM-512",
+        "ML-KEM-1024,ML-KEM-768"
+    })
+    public void testKEMAlgorithmMismatch(String kemAlgorithm, String keyAlgorithm) throws Exception {
+        // Create KEM instance with one algorithm
+        KEM kem = KEM.getInstance(kemAlgorithm, getProviderName());
+        
+        // Generate key pair with a different algorithm
+        KeyPair keyPair = generateKeyPair(keyAlgorithm);
+        
+        // Test encapsulator - should fail with algorithm mismatch
+        try {
+            kem.newEncapsulator(keyPair.getPublic());
+            fail("testKEMAlgorithmMismatch failed - Creating encapsulator with " + keyAlgorithm +
+                 " key for " + kemAlgorithm + " KEM instance should throw InvalidKeyException");
+        } catch (InvalidKeyException ike) {
+            String expectedMessage = "Key algorithm " + keyAlgorithm +
+                " does not match KEM instance algorithm " + kemAlgorithm;
+            assertEquals(expectedMessage, ike.getMessage());
+        }
+        
+        // Test decapsulator - should fail with algorithm mismatch
+        try {
+            kem.newDecapsulator(keyPair.getPrivate());
+            fail("testKEMAlgorithmMismatch failed - Creating decapsulator with " + keyAlgorithm +
+                 " key for " + kemAlgorithm + " KEM instance should throw InvalidKeyException");
+        } catch (InvalidKeyException ike) {
+            String expectedMessage = "Key algorithm " + keyAlgorithm +
+                " does not match KEM instance algorithm " + kemAlgorithm;
+            assertEquals(expectedMessage, ike.getMessage());
+        }
+    }
+
+    /**
+     * Tests that the generic "ML-KEM" KEM instance works with all ML-KEM parameter sets.
+     *
+     * <p>This test verifies that when you create a KEM instance using the generic "ML-KEM"
+     * algorithm name, it should accept keys from any ML-KEM variant (ML-KEM-512, ML-KEM-768,
+     * or ML-KEM-1024). The generic instance should be flexible and work with all parameter sets.
+     *
+     * <p>Test procedure:
+     * <ol>
+     *   <li>Create a generic KEM instance using "ML-KEM"</li>
+     *   <li>Generate a key pair using a specific parameter set (e.g., ML-KEM-512)</li>
+     *   <li>Create an encapsulator with the key pair's public key</li>
+     *   <li>Perform encapsulation to generate a shared secret</li>
+     *   <li>Create a decapsulator with the key pair's private key</li>
+     *   <li>Perform decapsulation and verify the shared secrets match</li>
+     * </ol>
+     *
+     * @param keyAlgorithm the specific ML-KEM parameter set to use for key generation
+     * @throws Exception if an unexpected error occurs during test execution
+     */
+    @ParameterizedTest
+    @CsvSource({"ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"})
+    public void testGenericMLKEMWithAllParameterSets(String keyAlgorithm) throws Exception {
+        // Create generic ML-KEM instance
+        KEM kem = KEM.getInstance("ML-KEM", getProviderName());
+        
+        // Generate key pair with specific parameter set
+        KeyPair keyPair = generateKeyPair(keyAlgorithm);
+        
+        // Test encapsulation and decapsulation - should work with generic ML-KEM
+        KEM.Encapsulator encapsulator = kem.newEncapsulator(keyPair.getPublic());
+        KEM.Encapsulated encapsulated = encapsulator.encapsulate(0, 32, "AES");
+        
+        SecretKey encapKey = encapsulated.key();
+        byte[] encapsulation = encapsulated.encapsulation();
+        
+        KEM.Decapsulator decapsulator = kem.newDecapsulator(keyPair.getPrivate());
+        SecretKey decapKey = decapsulator.decapsulate(encapsulation, 0, 32, "AES");
+        
+        assertArrayEquals(encapKey.getEncoded(), decapKey.getEncoded(),
+            "Generic ML-KEM should work with " + keyAlgorithm + " keys - secrets do not match");
     }
 
     protected KeyPair generateKeyPair(String Algorithm) throws Exception {
