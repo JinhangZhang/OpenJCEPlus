@@ -54,21 +54,11 @@ public final class PBMAC1Parameters extends AlgorithmParametersSpi {
     static final ObjectIdentifier pkcs5PBKDF2_OID =
             ObjectIdentifier.of(KnownOIDs.PBKDF2);
 
-    private static final ObjectIdentifier pkcs5PBMAC1_OID =
-            ObjectIdentifier.of(KnownOIDs.PBMAC1);
-
     private String hmacAlgo;
-    private byte[] salt;
-    private int iterationCount;
-    private int keyLength;
-    private String kdfAlgo;
+    private PBKDF2Parameters kdfParams;
 
     public PBMAC1Parameters() {
-        hmacAlgo = null;
-        salt = null;
-        iterationCount = 0;
-        keyLength = 0;
-        kdfAlgo = null;
+        // Initialize to null
     }
 
     @Override
@@ -80,72 +70,31 @@ public final class PBMAC1Parameters extends AlgorithmParametersSpi {
 
     @Override
     protected void engineInit(byte[] encoded) throws IOException {
-        DerValue pBMAC1_params = new DerValue(encoded);
-        if (pBMAC1_params.tag != DerValue.tag_Sequence) {
+        DerValue[] info = new DerInputStream(encoded).getSequence(2);
+        if (info.length != 2) {
             throw new IOException("PBMAC1 parameter parsing error: "
-                    + "not a sequence");
+                    + "expected length not 2");
         }
-
-        DerValue kdf = pBMAC1_params.data.getDerValue();
-
-        // KDF info (keyDerivationFunc AlgorithmIdentifier)
+        
+        DerValue kdf = info[0];
         if (kdf.tag != DerValue.tag_Sequence) {
-            throw new IOException("PBMAC1 parameter parsing error: "
+            throw new IOException("PBKDF2 parameter parsing error: "
                     + "not an ASN.1 SEQUENCE tag");
         }
+        
         ObjectIdentifier OID = kdf.data.getOID();
-
-        if (OID.equals(pkcs5PBKDF2_OID)) {
-            // Parse PBKDF2 parameters
-            DerValue pbkdf2Params = kdf.data.getDerValue();
-            if (pbkdf2Params.tag != DerValue.tag_Sequence) {
-                throw new IOException("PBKDF2 parameter parsing error: "
-                        + "not a sequence");
-            }
-            
-            // Parse salt
-            this.salt = pbkdf2Params.data.getOctetString();
-            
-            // Parse iteration count
-            this.iterationCount = pbkdf2Params.data.getInteger();
-            
-            // Parse optional key length
-            if (pbkdf2Params.data.available() > 0) {
-                DerValue val = pbkdf2Params.data.getDerValue();
-                if (val.tag == DerValue.tag_Integer) {
-                    this.keyLength = val.getInteger();
-                    if (pbkdf2Params.data.available() > 0) {
-                        val = pbkdf2Params.data.getDerValue();
-                    }
-                }
-                // Parse optional PRF (default is HmacSHA1)
-                if (val != null && val.tag == DerValue.tag_Sequence) {
-                    ObjectIdentifier prfOID = val.data.getOID();
-                    KnownOIDs prfKnown = KnownOIDs.findMatch(prfOID.toString());
-                    if (prfKnown != null) {
-                        this.kdfAlgo = prfKnown.stdName();
-                    }
-                }
-            }
-            
-            if (this.kdfAlgo == null) {
-                this.kdfAlgo = "HmacSHA1"; // Default PRF
-            }
-        } else {
-            throw new IOException("PBMAC1 parameter parsing error: "
-                    + "expecting the object identifier for PBKDF2");
+        if (!OID.equals(pkcs5PBKDF2_OID)) {
+            throw new IOException("PBKDF2 parameter parsing error: "
+                    + "not an ASN.1 SEQUENCE tag");
         }
-
-        if (kdf.data.available() != 0) {
-            throw new IOException("PBMAC1 parameter parsing error: "
-                    + "extra data for KDF");
-        }
-
-        // MAC info (messageAuthScheme AlgorithmIdentifier)
-        DerValue mac = pBMAC1_params.data.getDerValue();
-        ObjectIdentifier macOID = mac.data.getOID();
+        
+        DerValue pBKDF2_params = kdf.data.getDerValue();
+        this.kdfParams = new PBKDF2Parameters(pBKDF2_params);
+        
+        // Hmac function used to compute the MAC
+        ObjectIdentifier macOID = info[1].data.getOID();
         KnownOIDs o = KnownOIDs.findMatch(macOID.toString());
-
+        
         if (o == null || (!o.stdName().equals("HmacSHA1")
                 && !o.stdName().equals("HmacSHA224")
                 && !o.stdName().equals("HmacSHA256")
@@ -157,17 +106,7 @@ public final class PBMAC1Parameters extends AlgorithmParametersSpi {
                     + "expecting the object identifier for a HmacSHA key "
                     + "derivation function");
         }
-        hmacAlgo = o.stdName();
-
-        if (mac.data.available() != 0) {
-            throw new IOException("PBMAC1 parameter parsing error: "
-                    + "extra data for MAC");
-        }
-
-        if (pBMAC1_params.data.available() != 0) {
-            throw new IOException("PBMAC1 parameter parsing error: "
-                    + "extra data");
-        }
+        this.hmacAlgo = o.stdName();
     }
 
     @Override
@@ -192,22 +131,13 @@ public final class PBMAC1Parameters extends AlgorithmParametersSpi {
         DerOutputStream kdfOut = new DerOutputStream();
         kdfOut.putOID(pkcs5PBKDF2_OID);
         
-        // PBKDF2 parameters
-        DerOutputStream pbkdf2Out = new DerOutputStream();
-        pbkdf2Out.putOctetString(salt);
-        pbkdf2Out.putInteger(iterationCount);
-        if (keyLength > 0) {
-            pbkdf2Out.putInteger(keyLength);
-        }
-        // Add PRF if not default
-        if (kdfAlgo != null && !kdfAlgo.equals("HmacSHA1")) {
-            ObjectIdentifier prfOID = ObjectIdentifier.of(KnownOIDs.findMatch(kdfAlgo));
-            DerOutputStream prfOut = new DerOutputStream();
-            prfOut.putOID(prfOID);
-            pbkdf2Out.write(DerValue.tag_Sequence, prfOut);
-        }
-        
-        kdfOut.write(DerValue.tag_Sequence, pbkdf2Out);
+        // PBKDF2 parameters - use PBKDF2Parameters.encode()
+        byte[] pbkdf2Encoded = PBKDF2Parameters.encode(
+                kdfParams.getSalt(),
+                kdfParams.getIterationCount(),
+                kdfParams.getKeyLength(),
+                kdfParams.getPrfAlgo());
+        kdfOut.write(pbkdf2Encoded);
         out.write(DerValue.tag_Sequence, kdfOut);
 
         // messageAuthScheme AlgorithmIdentifier {{PBMAC1-MACs}}
@@ -227,32 +157,20 @@ public final class PBMAC1Parameters extends AlgorithmParametersSpi {
 
     @Override
     protected String engineToString() {
-        return "PBMAC1 Parameters: salt=" + (salt != null ? salt.length : 0) + " bytes, " +
-               "iterationCount=" + iterationCount + ", " +
-               "keyLength=" + keyLength + ", " +
-               "kdfAlgo=" + kdfAlgo + ", " +
+        return "PBMAC1 Parameters: " +
+               "kdfParams=" + (kdfParams != null ?
+                   "salt=" + kdfParams.getSalt().length + " bytes, " +
+                   "iterationCount=" + kdfParams.getIterationCount() + ", " +
+                   "keyLength=" + kdfParams.getKeyLength() + ", " +
+                   "prfAlgo=" + kdfParams.getPrfAlgo() : "null") + ", " +
                "MAC=" + hmacAlgo;
     }
 
-    byte[] getSalt() {
-        return salt != null ? salt.clone() : null;
-    }
-
-    int getIterationCount() {
-        return iterationCount;
-    }
-
-    int getKeyLength() {
-        return keyLength;
-    }
-
-    String getKdfAlgo() {
-        return kdfAlgo;
+    PBKDF2Parameters getKdfParams() {
+        return kdfParams;
     }
 
     String getHmacAlgo() {
         return hmacAlgo;
     }
 }
-
-// Made with Bob
