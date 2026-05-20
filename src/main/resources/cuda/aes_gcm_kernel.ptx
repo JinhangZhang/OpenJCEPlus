@@ -1,0 +1,53 @@
+//
+// CUDA PTX kernel for AES/GCM acceleration
+// Copyright IBM Corp. 2026
+//
+// This is a placeholder file. The actual CUDA kernel implementation
+// should be compiled from CUDA C code to PTX format.
+//
+// To generate this file:
+// 1. Write CUDA C implementation of AES/GCM kernels
+// 2. Compile with nvcc: nvcc -ptx aes_gcm_kernel.cu -o aes_gcm_kernel.ptx
+// 3. Place the generated PTX file in this location
+//
+// Required kernel functions:
+// - aes_gcm_encrypt_kernel: Performs AES/GCM encryption
+// - aes_gcm_decrypt_kernel: Performs AES/GCM decryption
+//
+// Kernel signatures:
+//
+// __global__ void aes_gcm_encrypt_kernel(
+//     const unsigned char* key,      // AES key (16, 24, or 32 bytes)
+//     int keyLength,                 // Key length in bytes
+//     const unsigned char* iv,       // Initialization vector (12 bytes)
+//     int ivLength,                  // IV length in bytes
+//     const unsigned char* aad,      // Additional authenticated data
+//     int aadLength,                 // AAD length in bytes
+//     const unsigned char* plaintext,// Plaintext input
+//     int plaintextLength,           // Plaintext length in bytes
+//     unsigned char* ciphertext,     // Ciphertext output (includes tag)
+//     int tagLength                  // GCM tag length (12 or 16 bytes)
+// );
+//
+// __global__ void aes_gcm_decrypt_kernel(
+//     const unsigned char* key,      // AES key (16, 24, or 32 bytes)
+//     int keyLength,                 // Key length in bytes
+//     const unsigned char* iv,       // Initialization vector (12 bytes)
+//     int ivLength,                  // IV length in bytes
+//     const unsigned char* aad,      // Additional authenticated data
+//     int aadLength,                 // AAD length in bytes
+//     const unsigned char* ciphertext,// Ciphertext input (includes tag)
+//     int ciphertextLength,          // Ciphertext length in bytes
+//     unsigned char* plaintext,      // Plaintext output
+//     int tagLength,                 // GCM tag length (12 or 16 bytes)
+//     unsigned char* authResult      // Authentication result (1 byte: 0=fail, 1=success)
+// );
+//
+// Implementation notes:
+// - Use CUDA's built-in AES instructions if available (compute capability >= 5.2)
+// - Implement GCM mode using GHASH for authentication
+// - Ensure constant-time operations to prevent timing attacks
+// - Optimize for coalesced memory access patterns
+// - Use shared memory for key schedule and intermediate values
+//
+// TODO: Implement actual CUDA kernels and compile to PTX

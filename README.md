@@ -8,6 +8,7 @@
 - [OpenJCEPlus and OpenJCEPlusFIPS Provider SDK Installation](#openjceplus-and-openjceplusfips-provider-sdk-installation)
 - [Configuration Options](#configuration-options)
 - [Features and Algorithms](#features-and-algorithms)
+- [GPU Acceleration](#gpu-acceleration)
 - [Contributions](#contributions)
 
 # Overview
@@ -287,6 +288,66 @@ take effect.
         ```console
         -Djgskit.library.path=$ANYDIRECTORY
         ```
+
+## GPU Acceleration
+
+OpenJCEPlus supports GPU acceleration for AES/GCM/NoPadding operations using the OpenJ9 CUDA API. This feature provides significant performance improvements for cryptographic operations on large data blocks.
+
+### Key Features
+
+- **CUDA-based acceleration**: Uses NVIDIA CUDA through the OpenJ9 CUDA API
+- **Non-FIPS only**: GPU acceleration is only available in non-FIPS mode
+- **Large data blocks**: Optimized for data blocks >= 64 KB (configurable)
+- **Batch processing**: Supports batching multiple operations for better GPU utilization
+- **CPU fallback**: Automatically falls back to CPU if GPU operations fail
+- **Disabled by default**: Must be explicitly enabled via system properties
+
+### Requirements
+
+1. OpenJ9 JVM with CUDA support
+2. NVIDIA GPU with CUDA support
+3. Appropriate CUDA drivers installed
+4. Non-FIPS mode (GPU acceleration is not available in FIPS mode)
+
+### Configuration
+
+Enable GPU acceleration with system properties:
+
+```bash
+# Enable GPU acceleration
+-Dopenjceplus.aes.gcm.gpu.enabled=true
+
+# Set minimum data size threshold (default: 65536 bytes)
+-Dopenjceplus.aes.gcm.gpu.minDataSize=131072
+
+# Set minimum batch size (default: 4)
+-Dopenjceplus.aes.gcm.gpu.minBatchSize=8
+
+# Enable/disable CPU fallback (default: true)
+-Dopenjceplus.aes.gcm.gpu.cpuFallback=true
+
+# Select CUDA device (default: 0)
+-Dopenjceplus.aes.gcm.gpu.deviceId=0
+```
+
+### Usage Example
+
+```java
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
+// GPU acceleration will be used automatically for large data blocks
+Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", "OpenJCEPlus");
+SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+
+cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+byte[] ciphertext = cipher.doFinal(largeData); // GPU acceleration for large data
+```
+
+For detailed information, see [GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md).
+
 ## Configuration Options
 
 The following properties can be used to configure application behavior at runtime.

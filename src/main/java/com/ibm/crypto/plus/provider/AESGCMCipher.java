@@ -42,6 +42,10 @@ public final class AESGCMCipher extends CipherSpi implements AESConstants, GCMCo
     private int tagLenInBytes = DEFAULT_TAG_LENGTH / 8;
 
     private GCMCipher gcmCipher;
+    
+    // GPU acceleration support (only for non-FIPS mode)
+    private static volatile boolean gpuInitAttempted = false;
+    private boolean isFIPSMode = false;
 
     private BigInteger generatedIVCtrField = null;
     private byte[] generatedIVDevField = null;
@@ -143,6 +147,19 @@ public final class AESGCMCipher extends CipherSpi implements AESConstants, GCMCo
         buffer = new byte[AES_BLOCK_SIZE * 2];
 
         this.provider.registerCleanable(this, cleanOCKResources(Key));
+        
+        // Check if this is FIPS mode
+        this.isFIPSMode = provider instanceof OpenJCEPlusFIPS;
+        
+        // Initialize GPU acceleration if enabled and not in FIPS mode
+        if (!isFIPSMode && GPUAccelerationConfig.isGPUEnabled() && !gpuInitAttempted) {
+            synchronized (AESGCMCipher.class) {
+                if (!gpuInitAttempted) {
+                    gpuInitAttempted = true;
+                    CUDAGCMAccelerator.initialize();
+                }
+            }
+        }
     }
 
 
@@ -1218,7 +1235,27 @@ public final class AESGCMCipher extends CipherSpi implements AESConstants, GCMCo
         // OCKDebug.Msg(debPrefix, methodName, "Entering in" + in + " len=" + 0);
 
         int outLen = 0;
+        
+        // Try GPU acceleration for large data blocks in non-FIPS mode
+        if (!isFIPSMode && shouldUseGPUAcceleration(len)) {
+            try {
+                outLen = finalNoPaddingGPU(in, inOfs, out, outOfs, len);
+                return outLen;
+            } catch (Exception e) {
+                // GPU acceleration failed, fall back to CPU
+                if (GPUAccelerationConfig.isCPUFallbackEnabled()) {
+                    if (OpenJCEPlusProvider.getDebug() != null) {
+                        OpenJCEPlusProvider.getDebug().println(
+                            "GPU acceleration failed, falling back to CPU: " + e.getMessage());
+                    }
+                    // Continue to CPU implementation below
+                } else {
+                    throw provider.providerException("GPU acceleration failed and CPU fallback is disabled", e);
+                }
+            }
+        }
 
+        // CPU implementation (original code)
         if (!encrypting) {
             outLen = this.gcmCipher.do_GCM_FinalForUpdateDecrypt(Key.getValue(), IV, tagLenInBytes, in,
                     inOfs, len, out, outOfs, authData);
@@ -1234,6 +1271,81 @@ public final class AESGCMCipher extends CipherSpi implements AESConstants, GCMCo
         }
 
         return outLen;
+    }
+    
+    /**
+     * GPU-accelerated version of finalNoPadding for large data blocks.
+     * Only used in non-FIPS mode when GPU acceleration is enabled and available.
+     */
+    private int finalNoPaddingGPU(byte[] in, int inOfs, byte[] out, int outOfs, int len)
+            throws Exception {
+        
+        // Prepare input data (handle offset if needed)
+        byte[] input;
+        if (inOfs == 0 && len == in.length) {
+            input = in;
+        } else {
+            input = new byte[len];
+            System.arraycopy(in, inOfs, input, 0, len);
+        }
+        
+        // Prepare output buffer
+        byte[] output;
+        int outputLen;
+        
+        if (!encrypting) {
+            // Decryption: output is smaller (no tag)
+            outputLen = len - tagLenInBytes;
+            if (outOfs == 0 && out.length >= outputLen) {
+                output = out;
+            } else {
+                output = new byte[outputLen];
+            }
+            
+            // Perform GPU-accelerated decryption
+            int resultLen = CUDAGCMAccelerator.decrypt(
+                Key.getValue(), IV, authData, input, output, tagLenInBytes);
+            
+            // Copy to output buffer if needed
+            if (output != out) {
+                System.arraycopy(output, 0, out, outOfs, resultLen);
+            }
+            
+            return resultLen;
+            
+        } else {
+            // Encryption: output is larger (includes tag)
+            outputLen = len + tagLenInBytes;
+            if (outOfs == 0 && out.length >= outputLen) {
+                output = out;
+            } else {
+                output = new byte[outputLen];
+            }
+            
+            // Perform GPU-accelerated encryption
+            int resultLen = CUDAGCMAccelerator.encrypt(
+                Key.getValue(), IV, authData, input, output, tagLenInBytes);
+            
+            // Copy to output buffer if needed
+            if (output != out) {
+                System.arraycopy(output, 0, out, outOfs, resultLen);
+            }
+            
+            return resultLen;
+        }
+    }
+    
+    /**
+     * Check if GPU acceleration should be used for the given data size.
+     * GPU acceleration is only used for:
+     * - Non-FIPS mode
+     * - Large data blocks (>= configured threshold)
+     * - When GPU is available and enabled
+     */
+    private boolean shouldUseGPUAcceleration(int dataSize) {
+        return !isFIPSMode &&
+               GPUAccelerationConfig.shouldUseGPU(dataSize) &&
+               CUDAGCMAccelerator.isAvailable();
     }
 
     private int checkOutputCapacity(byte[] output, int outputOffset, int estOutSize)
