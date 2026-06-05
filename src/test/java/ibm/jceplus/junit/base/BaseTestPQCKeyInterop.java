@@ -793,7 +793,8 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
          */
         KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, openjceplusProviderName);
         KeyPairGenerator interopKpg = KeyPairGenerator.getInstance(algorithm, interopProviderName);
-        KeySpec interopPrivKeySpec = PKCS8EncodedKeySpec(interopKpg.generateKeyPair().getPrivate().getEncoded());
+        KeyPair keyPair = interopKpg.generateKeyPair();
+        KeySpec interopPrivKeySpec = PKCS8EncodedKeySpec(keyPair.getPrivate().getEncoded());
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(interopPrivKeySpec);
         KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, interopPrivKeySpec.getClass());
         assertEquals(interopPrivKeySpec.getClass(), keySpec.getClass());
