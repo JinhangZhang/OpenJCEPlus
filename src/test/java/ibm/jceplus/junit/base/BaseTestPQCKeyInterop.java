@@ -776,7 +776,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName2()));
 
         doGetKeySpecPrivateInteropToPlus(
-                algorithm, getInteropProviderName(), getProviderName());
+                algorithm, getInteropProviderName2(), getProviderName());
     }
 
     private void doGetKeySpecPrivateInteropToPlus(String algorithm,
