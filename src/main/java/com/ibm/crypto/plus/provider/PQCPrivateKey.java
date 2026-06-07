@@ -193,12 +193,16 @@ final class PQCPrivateKey extends PKCS8Key {
 
         this.name = PQCKnownOIDs.findMatch(this.algid.getName()).stdName();
 
+        byte[] iccKeyBytes = this.privKeyMaterial;
+
         //Check to determine if the key bytes have the Octet tag.
         if (!(OctectStringEncoded(this.privKeyMaterial))) {
             System.out.println("privKeyMaterial is NOT OctetStringEncoded, wrapping it");
             DerValue pkOct = null;
             try {
-                pkOct = new DerValue(DerValue.tag_OctetString, this.privKeyMaterial);
+                pkOct = new DerValue(DerValue.tag_OctetString, iccKeyBytes);
+
+                iccKeyBytes = pkOct.toByteArray();
 
                 byte[] pkOctBytes = pkOct.toByteArray();
 
@@ -209,7 +213,7 @@ final class PQCPrivateKey extends PKCS8Key {
                 }
                 System.out.println();
 
-                this.privKeyMaterial = pkOct.toByteArray();
+                // this.privKeyMaterial = pkOct.toByteArray();
             } finally {
                 pkOct.clear();
             }
@@ -223,8 +227,10 @@ final class PQCPrivateKey extends PKCS8Key {
             }
             System.out.println();
 
+            // this.pqcKey = PQCKey.createPrivateKey(
+            //                     this.name, this.privKeyMaterial, provider);
             this.pqcKey = PQCKey.createPrivateKey(
-                                this.name, this.privKeyMaterial, provider);
+                                this.name, iccKeyBytes, provider);
         } catch (Exception e) {
             throw new InvalidKeyException("Invalid key " + e.getMessage(), e);
         }
@@ -238,6 +244,7 @@ final class PQCPrivateKey extends PKCS8Key {
 
     @Override
     public byte[] getEncoded() {
+        System.out.println("===== PQCPrivateKey.getEncoded() =====");
         checkDestroyed();
         /*Different JVM levels are resulting in different encodings. So do the encoding here instead.
         *     OneAsymmetricKey ::= SEQUENCE {
@@ -261,6 +268,17 @@ final class PQCPrivateKey extends PKCS8Key {
             tmp.putOctetString(this.privKeyMaterial);
             DerValue out = DerValue.wrap(DerValue.tag_Sequence, tmp);
             encodedKey = out.toByteArray();
+
+            System.out.println("privKeyMaterial length = "
+            + (this.privKeyMaterial == null ? "null" : this.privKeyMaterial.length));
+            System.out.println("privKeyMaterial first bytes = "
+                    + toHex(this.privKeyMaterial, 32));
+
+            System.out.println("encodedKey length = "
+                    + (encodedKey == null ? "null" : encodedKey.length));
+            System.out.println("encodedKey first bytes = "
+                    + toHex(encodedKey, 64));
+
             tmp.close();
             bytes.close();
         } catch (IOException ex) {
@@ -273,6 +291,21 @@ final class PQCPrivateKey extends PKCS8Key {
 
     PQCKey getPQCKey() {
         return this.pqcKey;
+    }
+
+    private static String toHex(byte[] data, int maxLen) {
+        if (data == null) {
+            return "null";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int len = Math.min(data.length, maxLen);
+
+        for (int i = 0; i < len; i++) {
+            sb.append(String.format("%02X ", data[i] & 0xff));
+        }
+
+        return sb.toString();
     }
 
     @java.io.Serial
