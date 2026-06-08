@@ -48,11 +48,11 @@ final class PQCPrivateKey extends PKCS8Key {
         DerValue pkOct = null;
         
         System.out.println("===== PQCPrivateKey(keyBytes, algName) =====");
-        System.out.println("algName = " + algName);
-        System.out.println("name = " + this.name);
+        System.out.println("PQCPrivateKey(keyBytes, algName)algName = " + algName);
+        System.out.println("PQCPrivateKey(keyBytes, algName)name = " + this.name);
 
-        System.out.println("input keyBytes length = " + keyBytes.length);
-        System.out.print("input keyBytes first bytes = ");
+        System.out.println("PQCPrivateKey(keyBytes, algName)input keyBytes length = " + keyBytes.length);
+        System.out.print("PQCPrivateKey(keyBytes, algName)input keyBytes first bytes = ");
         for (int i = 0; i < Math.min(32, keyBytes.length); i++) {
             System.out.printf("%02X ", keyBytes[i] & 0xFF);
         }
@@ -61,15 +61,15 @@ final class PQCPrivateKey extends PKCS8Key {
         //Check to determine if the key bytes already have the Octet tag.
         if (OctectStringEncoded(keyBytes)) {
             //Remove encoding OctetString encoding.
-            System.out.println("Key is OctetString encoded, removing encoding");
+            System.out.println("PQCPrivateKey(keyBytes, algName)Key is OctetString encoded, removing encoding");
             key = Arrays.copyOfRange(keyBytes, 4, keyBytes.length);
         } else {
-            System.out.println("Key is not OctetString encoded");
+            System.out.println("PQCPrivateKey(keyBytes, algName)Key is not OctetString encoded");
             key = keyBytes;
         }
 
-        System.out.println("key length = " + key.length);
-        System.out.print("key first bytes = ");
+        System.out.println("PQCPrivateKey(keyBytes, algName)key length = " + key.length);
+        System.out.print("PQCPrivateKey(keyBytes, algName)key first bytes = ");
         for (int i = 0; i < Math.min(32, key.length); i++) {
             System.out.printf("%02X ", key[i] & 0xFF);
         }
@@ -80,8 +80,8 @@ final class PQCPrivateKey extends PKCS8Key {
             try {
                 pkOct = new DerValue(DerValue.tag_OctetString, key);
                 byte[] pkOctBytes = pkOct.toByteArray();
-                System.out.println("pkOctBytes length = " + pkOctBytes.length);
-                System.out.print("pkOctBytes first bytes = ");
+                System.out.println("PQCPrivateKey(keyBytes, algName)pkOctBytes length = " + pkOctBytes.length);
+                System.out.print("PQCPrivateKey(keyBytes, algName)pkOctBytes first bytes = ");
                 for (int i = 0; i < Math.min(32, pkOctBytes.length); i++) {
                     System.out.printf("%02X ", pkOctBytes[i] & 0xFF);
                 }
@@ -91,8 +91,8 @@ final class PQCPrivateKey extends PKCS8Key {
                                 this.name, pkOct.toByteArray(), provider);
                 this.privKeyMaterial = pkOct.toByteArray();
 
-                System.out.println("this.privKeyMaterial length = " + this.privKeyMaterial.length);
-                System.out.print("this.privKeyMaterial first bytes = ");
+                System.out.println("PQCPrivateKey(keyBytes, algName)this.privKeyMaterial length = " + this.privKeyMaterial.length);
+                System.out.print("PQCPrivateKey(keyBytes, algName)this.privKeyMaterial first bytes = ");
                 for (int i = 0; i < Math.min(32, this.privKeyMaterial.length); i++) {
                     System.out.printf("%02X ", this.privKeyMaterial[i] & 0xFF);
                 }
@@ -117,13 +117,13 @@ final class PQCPrivateKey extends PKCS8Key {
             this.pqcKey = pqcKey;
 
             System.out.println("===== PQCPrivateKey(pqcKey) =====");
-            System.out.println("pqcKey = " + pqcKey);
-            System.out.println("pqcKey algorithm = " + pqcKey.getAlgorithm());
+            System.out.println("PQCPrivateKey(pqcKey)pqcKey = " + pqcKey);
+            System.out.println("PQCPrivateKey(pqcKey)pqcKey algorithm = " + pqcKey.getAlgorithm());
 
             byte[] pqcPrivateBytes = pqcKey.getPrivateKeyBytes();
 
-            System.out.println("pqcKey private bytes length = " + pqcPrivateBytes.length);
-            System.out.print("pqcKey private bytes first bytes = ");
+            System.out.println("PQCPrivateKey(pqcKey)pqcKey private bytes length = " + pqcPrivateBytes.length);
+            System.out.print("PQCPrivateKey(pqcKey)pqcKey private bytes first bytes = ");
             for (int i = 0; i < Math.min(32, pqcPrivateBytes.length); i++) {
                 System.out.printf("%02X ", pqcPrivateBytes[i] & 0xFF);
             }
@@ -131,7 +131,7 @@ final class PQCPrivateKey extends PKCS8Key {
 
             //Check to determine if the key bytes have the Octet tag.
             if (OctectStringEncoded(pqcKey.getPrivateKeyBytes())) {
-                System.out.println("privKeyMaterial uses pqcPrivateBytes directly");
+                System.out.println("PQCPrivateKey(pqcKey)privKeyMaterial uses pqcPrivateBytes directly");
                 this.privKeyMaterial = pqcKey.getPrivateKeyBytes();
             } else {
                 DerValue pkOct = null;
@@ -139,8 +139,8 @@ final class PQCPrivateKey extends PKCS8Key {
                     pkOct = new DerValue(DerValue.tag_OctetString, pqcKey.getPrivateKeyBytes());
 
                     byte[] pkOctBytes = pkOct.toByteArray();
-                    System.out.println("pkOctBytes length = " + pkOctBytes.length);
-                    System.out.print("pkOctBytes first bytes = ");
+                    System.out.println("PQCPrivateKey(pqcKey)pkOctBytes length = " + pkOctBytes.length);
+                    System.out.print("PQCPrivateKey(pqcKey)pkOctBytes first bytes = ");
                     for (int i = 0; i < Math.min(32, pkOctBytes.length); i++) {
                         System.out.printf("%02X ", pkOctBytes[i] & 0xFF);
                     }
@@ -148,7 +148,7 @@ final class PQCPrivateKey extends PKCS8Key {
 
                     this.privKeyMaterial = pkOct.toByteArray();
                     System.out.println("this.privKeyMaterial length = " + this.privKeyMaterial.length);
-                    System.out.print("this.privKeyMaterial first bytes = ");
+                    System.out.print("PQCPrivateKey(pqcKey)this.privKeyMaterial first bytes = ");
                     for (int i = 0; i < Math.min(32, this.privKeyMaterial.length); i++) {
                         System.out.printf("%02X ", this.privKeyMaterial[i] & 0xFF);
                     }
@@ -177,15 +177,15 @@ final class PQCPrivateKey extends PKCS8Key {
 
         System.out.println("===== PQCPrivateKey(encoded) =====");
 
-        System.out.println("input encoded length = " + encoded.length);
-        System.out.print("input encoded first bytes = ");
+        System.out.println("PQCPrivateKey(encoded)input encoded length = " + encoded.length);
+        System.out.print("PQCPrivateKey(encoded)input encoded first bytes = ");
         for (int i = 0; i < Math.min(32, encoded.length); i++) {
             System.out.printf("%02X ", encoded[i] & 0xFF);
         }
         System.out.println();
 
-        System.out.println("after super(encoded), privKeyMaterial length = " + this.privKeyMaterial.length);
-        System.out.print("after super(encoded), privKeyMaterial first bytes = ");
+        System.out.println("PQCPrivateKey(encoded)after super(encoded), privKeyMaterial length = " + this.privKeyMaterial.length);
+        System.out.print("PQCPrivateKey(encoded)after super(encoded), privKeyMaterial first bytes = ");
         for (int i = 0; i < Math.min(32, this.privKeyMaterial.length); i++) {
             System.out.printf("%02X ", this.privKeyMaterial[i] & 0xFF);
         }
@@ -193,21 +193,19 @@ final class PQCPrivateKey extends PKCS8Key {
 
         this.name = PQCKnownOIDs.findMatch(this.algid.getName()).stdName();
 
-        byte[] iccKeyBytes = this.privKeyMaterial;
-
         //Check to determine if the key bytes have the Octet tag.
         if (!(OctectStringEncoded(this.privKeyMaterial))) {
-            System.out.println("privKeyMaterial is NOT OctetStringEncoded, wrapping it");
+            System.out.println("PQCPrivateKey(encoded)privKeyMaterial is NOT OctetStringEncoded, wrapping it");
             DerValue pkOct = null;
             try {
-                pkOct = new DerValue(DerValue.tag_OctetString, iccKeyBytes);
+                pkOct = new DerValue(DerValue.tag_OctetString, this.privKeyMaterial);
 
                 iccKeyBytes = pkOct.toByteArray();
 
                 byte[] pkOctBytes = pkOct.toByteArray();
 
-                System.out.println("pkOctBytes length = " + pkOctBytes.length);
-                System.out.print("pkOctBytes first bytes = ");
+                System.out.println("PQCPrivateKey(encoded)pkOctBytes length = " + pkOctBytes.length);
+                System.out.print("PQCPrivateKey(encoded)pkOctBytes first bytes = ");
                 for (int i = 0; i < Math.min(32, pkOctBytes.length); i++) {
                     System.out.printf("%02X ", pkOctBytes[i] & 0xFF);
                 }
@@ -219,9 +217,9 @@ final class PQCPrivateKey extends PKCS8Key {
             }
         }
         try {
-            System.out.println("before PQCKey.createPrivateKey, privKeyMaterial length = "
+            System.out.println("PQCPrivateKey(encoded)before PQCKey.createPrivateKey, privKeyMaterial length = "
             + this.privKeyMaterial.length);
-            System.out.print("before PQCKey.createPrivateKey, privKeyMaterial first bytes = ");
+            System.out.print("PQCPrivateKey(encoded)before PQCKey.createPrivateKey, privKeyMaterial first bytes = ");
             for (int i = 0; i < Math.min(32, this.privKeyMaterial.length); i++) {
                 System.out.printf("%02X ", this.privKeyMaterial[i] & 0xFF);
             }
@@ -230,7 +228,7 @@ final class PQCPrivateKey extends PKCS8Key {
             // this.pqcKey = PQCKey.createPrivateKey(
             //                     this.name, this.privKeyMaterial, provider);
             this.pqcKey = PQCKey.createPrivateKey(
-                                this.name, iccKeyBytes, provider);
+                                this.name, this.privKeyMaterial, provider);
         } catch (Exception e) {
             throw new InvalidKeyException("Invalid key " + e.getMessage(), e);
         }
@@ -269,14 +267,14 @@ final class PQCPrivateKey extends PKCS8Key {
             DerValue out = DerValue.wrap(DerValue.tag_Sequence, tmp);
             encodedKey = out.toByteArray();
 
-            System.out.println("privKeyMaterial length = "
+            System.out.println("PQCPrivateKey(getEncoded)privKeyMaterial length = "
             + (this.privKeyMaterial == null ? "null" : this.privKeyMaterial.length));
-            System.out.println("privKeyMaterial first bytes = "
+            System.out.println("PQCPrivateKey(getEncoded)privKeyMaterial first bytes = "
                     + toHex(this.privKeyMaterial, 32));
 
-            System.out.println("encodedKey length = "
+            System.out.println("PQCPrivateKey(getEncoded)encodedKey length = "
                     + (encodedKey == null ? "null" : encodedKey.length));
-            System.out.println("encodedKey first bytes = "
+            System.out.println("PQCPrivateKey(getEncoded)encodedKey first bytes = "
                     + toHex(encodedKey, 64));
 
             tmp.close();
