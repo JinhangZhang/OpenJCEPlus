@@ -169,6 +169,11 @@ final class PQCPrivateKey extends PKCS8Key {
     /**
      * Create a private key from it's DER encoding (PKCS#8).
      *
+          * pkOctBytes length = 36
+     * pkOctBytes first bytes = 04 22 80 20 FB BE 4B 73 57 D1 30 9C C4 05 21 5C 6E AB 7D 26 01 CC 8C 3B AD 74 C0 D9 25 8F CE 25 
+     * before PQCKey.createPrivateKey, privKeyMaterial length = 36
+     * before PQCKey.createPrivateKey, privKeyMaterial first bytes = 04 22 80 20 FB BE 4B 73 57 D1 30 9C C4 05 21 5C 6E AB 7D 26 01 CC 8C 3B AD 74 C0 D9 25 8F CE 25 
+     * 
      * @param encoded   the encoded PKCS#8 key
      */
     PQCPrivateKey(OpenJCEPlusProvider provider, byte[] encoded) throws InvalidKeyException {
@@ -177,6 +182,12 @@ final class PQCPrivateKey extends PKCS8Key {
 
         System.out.println("===== PQCPrivateKey(encoded) =====");
 
+        /**
+         * 
+         * input encoded length = 54
+         * input encoded first bytes = 30 34 02 01 00 30 0B 06 09 60 86 48 01 65 03 04 03 12 04 22 80 20 FB BE 4B 73 57 D1 30 9C C4 05 
+         * 
+         */
         System.out.println("PQCPrivateKey(encoded)input encoded length = " + encoded.length);
         System.out.print("PQCPrivateKey(encoded)input encoded first bytes = ");
         for (int i = 0; i < Math.min(32, encoded.length); i++) {
@@ -190,7 +201,13 @@ final class PQCPrivateKey extends PKCS8Key {
             System.out.printf("%02X ", this.privKeyMaterial[i] & 0xFF);
         }
         System.out.println();
-
+        /*
+         * after super(encoded), privKeyMaterial length = 34
+         * after super(encoded), privKeyMaterial first bytes = 80 20 FB BE 4B 73 57 D1 30 9C C4 05 21 5C 6E AB 7D 26 01 CC 8C 3B AD 74 C0 D9 25 8F CE 25 57 DA 
+         * OctectStringEncoded: key length = 34
+         * OctectStringEncoded: key first bytes = 80 20 FB BE 4B 73 57 D1 30 9C C4 05 21 5C 6E AB 7D 26 01 CC 8C 3B AD 74 C0 D9 25 8F CE 25 57 DA 
+         * privKeyMaterial is NOT OctetStringEncoded, wrapping it
+         */ 
         this.name = PQCKnownOIDs.findMatch(this.algid.getName()).stdName();
 
         //Check to determine if the key bytes have the Octet tag.
