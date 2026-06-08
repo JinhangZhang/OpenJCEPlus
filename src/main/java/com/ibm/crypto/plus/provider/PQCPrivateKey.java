@@ -46,7 +46,7 @@ final class PQCPrivateKey extends PKCS8Key {
         this.provider = provider;
         byte[] key = null;
         DerValue pkOct = null;
-        
+
         System.out.println("===== PQCPrivateKey(keyBytes, algName) =====");
         System.out.println("PQCPrivateKey(keyBytes, algName)algName = " + algName);
         System.out.println("PQCPrivateKey(keyBytes, algName)name = " + this.name);
@@ -89,7 +89,7 @@ final class PQCPrivateKey extends PKCS8Key {
 
                 this.pqcKey = PQCKey.createPrivateKey(
                                 this.name, pkOct.toByteArray(), provider);
-                this.privKeyMaterial = pkOct.toByteArray();
+                this.privKeyMaterial = key;
 
                 System.out.println("PQCPrivateKey(keyBytes, algName)this.privKeyMaterial length = " + this.privKeyMaterial.length);
                 System.out.print("PQCPrivateKey(keyBytes, algName)this.privKeyMaterial first bytes = ");
