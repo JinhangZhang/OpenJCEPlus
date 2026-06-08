@@ -842,7 +842,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(opensslKeySpec);
         KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, opensslKeySpec.getClass());
         assertEquals(opensslKeySpec.getClass(), keySpec.getClass());
-        assertPrivateKeyRawKeySpecEquals(opensslKeySpec, keySpec);
+        assertPrivateKeyRawKeySpecEquals(expectedKeyBytes, keySpec);
     }
 
     private void assertPrivateKeyRawKeySpecEquals(byte[] expectedKeyBytes, KeySpec actual) {
