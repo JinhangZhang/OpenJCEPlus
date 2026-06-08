@@ -200,8 +200,6 @@ final class PQCPrivateKey extends PKCS8Key {
             try {
                 pkOct = new DerValue(DerValue.tag_OctetString, this.privKeyMaterial);
 
-                iccKeyBytes = pkOct.toByteArray();
-
                 byte[] pkOctBytes = pkOct.toByteArray();
 
                 System.out.println("PQCPrivateKey(encoded)pkOctBytes length = " + pkOctBytes.length);
@@ -210,27 +208,29 @@ final class PQCPrivateKey extends PKCS8Key {
                     System.out.printf("%02X ", pkOctBytes[i] & 0xFF);
                 }
                 System.out.println();
-
+                System.out.println("PQCPrivateKey(encoded)before PQCKey.createPrivateKey, privKeyMaterial length = "
+                + this.privKeyMaterial.length);
+                System.out.print("PQCPrivateKey(encoded)before PQCKey.createPrivateKey, privKeyMaterial first bytes = ");
+                for (int i = 0; i < Math.min(32, this.privKeyMaterial.length); i++) {
+                    System.out.printf("%02X ", this.privKeyMaterial[i] & 0xFF);
+                }
+                System.out.println();
+                this.pqcKey = PQCKey.createPrivateKey(
+                                this.name, pkOctBytes, provider);
                 // this.privKeyMaterial = pkOct.toByteArray();
+            } catch (Exception e) {
+                throw new InvalidKeyException("Invalid key " + e.getMessage(), e);
             } finally {
                 pkOct.clear();
             }
-        }
-        try {
-            System.out.println("PQCPrivateKey(encoded)before PQCKey.createPrivateKey, privKeyMaterial length = "
-            + this.privKeyMaterial.length);
-            System.out.print("PQCPrivateKey(encoded)before PQCKey.createPrivateKey, privKeyMaterial first bytes = ");
-            for (int i = 0; i < Math.min(32, this.privKeyMaterial.length); i++) {
-                System.out.printf("%02X ", this.privKeyMaterial[i] & 0xFF);
-            }
-            System.out.println();
-
-            // this.pqcKey = PQCKey.createPrivateKey(
-            //                     this.name, this.privKeyMaterial, provider);
-            this.pqcKey = PQCKey.createPrivateKey(
+        } else {
+            System.out.println("PQCPrivateKey(encoded)privKeyMaterial is OctetStringEncoded, doesnt need to wrap it");
+            try {
+                this.pqcKey = PQCKey.createPrivateKey(
                                 this.name, this.privKeyMaterial, provider);
-        } catch (Exception e) {
-            throw new InvalidKeyException("Invalid key " + e.getMessage(), e);
+            } catch (Exception e) {
+                throw new InvalidKeyException("Invalid key " + e.getMessage(), e);
+            }
         }
     }
 
