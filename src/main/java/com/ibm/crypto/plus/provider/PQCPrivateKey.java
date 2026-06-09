@@ -67,6 +67,7 @@ final class PQCPrivateKey extends PKCS8Key {
                     System.out.println("This is a expanded key, use the keyBytes directly");
                     this.pqcKey = PQCKey.createPrivateKey(
                                 this.name, key, provider);
+                    this.privKeyMaterial = keyBytes.clone();
                 } else if (isSeedOnly(this.name, key)) {
                     System.out.println("This is a seed only key, wrapping it in an OctetString");
                     pkOct = new DerValue(DerValue.tag_OctetString, key);
@@ -79,6 +80,7 @@ final class PQCPrivateKey extends PKCS8Key {
                     System.out.println();
                     this.pqcKey = PQCKey.createPrivateKey(
                                 this.name, pkOctBytes, provider);
+                    this.privKeyMaterial = keyBytes.clone();
                 } else {
                     System.out.println("This is a not a seed/expanded key, maybe a RAW keyBytes");
                     pkOct = new DerValue(DerValue.tag_OctetString, key);
@@ -91,8 +93,9 @@ final class PQCPrivateKey extends PKCS8Key {
                     System.out.println();
                     this.pqcKey = PQCKey.createPrivateKey(
                                 this.name, pkOctBytes, provider);
+                    this.privKeyMaterial = pkOctBytes;
                 }
-                this.privKeyMaterial = keyBytes.clone();
+                
 
                 System.out.println("PQCPrivateKey(keyBytes, algName)this.privKeyMaterial length = " + this.privKeyMaterial.length);
                 System.out.print("PQCPrivateKey(keyBytes, algName)this.privKeyMaterial first bytes = ");
