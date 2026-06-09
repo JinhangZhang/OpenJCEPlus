@@ -809,17 +809,21 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         KeySpec interopPrivKeySpec = new PKCS8EncodedKeySpec(interopPrivateKey.getEncoded());
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(interopPrivKeySpec);
 
-        // Sign with the OpenJCEPlus private key, then verify with the interop public key.
-        byte[] data = "OpenJCEPlus PQC private key interop test".getBytes("UTF-8");
-        Signature signer = Signature.getInstance(algorithm, openjceplusProviderName);
-        signer.initSign(openjceplusPrivateKey);
-        signer.update(data);
-        byte[] signature = signer.sign();
+        KEM interopKem = KEM.getInstance(algorithm, interopProviderName);
+        KEM.Encapsulator encapsulator =
+                interopKem.newEncapsulator(interopKeyPair.getPublic());
 
-        Signature verifier = Signature.getInstance(algorithm, interopProviderName);
-        verifier.initVerify(interopKeyPair.getPublic());
-        verifier.update(data);
-        assertTrue(verifier.verify(signature));
+        KEM.Encapsulated encapsulated = encapsulator.encapsulate();
+
+        KEM openjceplusKem = KEM.getInstance(algorithm, openjceplusProviderName);
+        KEM.Decapsulator decapsulator =
+                openjceplusKem.newDecapsulator(openjceplusPrivateKey);
+
+        SecretKey openjceplusSecret =
+                decapsulator.decapsulate(encapsulated.encapsulation());
+
+        assertArrayEquals(encapsulated.key().getEncoded(),
+            openjceplusSecret.getEncoded());
 
         KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, interopPrivKeySpec.getClass());
         assertEquals(interopPrivKeySpec.getClass(), keySpec.getClass());
