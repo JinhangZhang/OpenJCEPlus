@@ -61,7 +61,11 @@ final class PQCPrivateKey extends PKCS8Key {
         // Currently the ICC expects the raw keys in an OctetString
         try {
             try {
-                if (isSeedOnly(this.name, keyBytes)) {
+                if (isExpanded(this.name, keyBytes)) {
+                    System.out.println("This is a expanded key, use the keyBytes directly");
+                    this.pqcKey = PQCKey.createPrivateKey(
+                                this.name, keyBytes, provider);
+                } else if (isSeedOnly(this.name, keyBytes)) {
                     System.out.println("This is a seed only key, wrapping it in an OctetString");
                     pkOct = new DerValue(DerValue.tag_OctetString, keyBytes);
                     byte[] pkOctBytes = pkOct.toByteArray();
@@ -73,13 +77,18 @@ final class PQCPrivateKey extends PKCS8Key {
                     System.out.println();
                     this.pqcKey = PQCKey.createPrivateKey(
                                 this.name, pkOct.toByteArray(), provider);
-                } else if (isExpanded(this.name, keyBytes)) {
-                    System.out.println("This is a expanded key, use the keyBytes directly");
-                    this.pqcKey = PQCKey.createPrivateKey(
-                                this.name, keyBytes, provider);
                 } else {
-                    System.out.println("This is a not a seed/expanded key, throw exception");
-                    throw new InvalidKeyException("ICC only generates seed/expanded for now.");
+                    System.out.println("This is a not a seed/expanded key, maybe a RAW keyBytes");
+                    pkOct = new DerValue(DerValue.tag_OctetString, keyBytes);
+                    byte[] pkOctBytes = pkOct.toByteArray();
+                    System.out.println("PQCPrivateKey(keyBytes, algName)pkOctBytes length = " + pkOctBytes.length);
+                    System.out.print("PQCPrivateKey(keyBytes, algName)pkOctBytes first bytes = ");
+                    for (int i = 0; i < Math.min(32, pkOctBytes.length); i++) {
+                        System.out.printf("%02X ", pkOctBytes[i] & 0xFF);
+                    }
+                    System.out.println();
+                    this.pqcKey = PQCKey.createPrivateKey(
+                                this.name, pkOct.toByteArray(), provider);
                 }
                 this.privKeyMaterial = keyBytes;
 
@@ -429,10 +438,9 @@ final class PQCPrivateKey extends PKCS8Key {
             throw new InvalidKeyException("Invalid " + this.name
                     + " private key encoding: null or empty key bytes");
         }
-
-        if (!isSeedOnly(algName, keyBytes) && !isExpanded(algName, keyBytes)) {
-            throw new InvalidKeyException("Invalid " + this.name
-                    + " private key encoding: key bytes are neither seed nor expanded key");
-        }
+        // if (!isSeedOnly(algName, keyBytes) && !isExpanded(algName, keyBytes)) {
+        //     throw new InvalidKeyException("Invalid " + this.name
+        //             + " private key encoding: key bytes are neither seed nor expanded key");
+        // }
     }
 }
