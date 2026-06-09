@@ -44,6 +44,7 @@ final class PQCPrivateKey extends PKCS8Key {
         this.algid = new AlgorithmId(PQCAlgorithmId.getOID(algName));
         this.name = PQCKnownOIDs.findMatch(this.algid.getName()).stdName();
         this.provider = provider;
+        byte[] key = null;
         DerValue pkOct = null;
 
         System.out.println("===== PQCPrivateKey(keyBytes, algName) =====");
@@ -59,15 +60,16 @@ final class PQCPrivateKey extends PKCS8Key {
 
         checkEncoding(this.name, keyBytes);
         // Currently the ICC expects the raw keys in an OctetString
+        key = keyBytes;
         try {
             try {
-                if (isExpanded(this.name, keyBytes)) {
+                if (isExpanded(this.name, key)) {
                     System.out.println("This is a expanded key, use the keyBytes directly");
                     this.pqcKey = PQCKey.createPrivateKey(
-                                this.name, keyBytes, provider);
-                } else if (isSeedOnly(this.name, keyBytes)) {
+                                this.name, key, provider);
+                } else if (isSeedOnly(this.name, key)) {
                     System.out.println("This is a seed only key, wrapping it in an OctetString");
-                    pkOct = new DerValue(DerValue.tag_OctetString, keyBytes);
+                    pkOct = new DerValue(DerValue.tag_OctetString, key);
                     byte[] pkOctBytes = pkOct.toByteArray();
                     System.out.println("PQCPrivateKey(keyBytes, algName)pkOctBytes length = " + pkOctBytes.length);
                     System.out.print("PQCPrivateKey(keyBytes, algName)pkOctBytes first bytes = ");
@@ -76,10 +78,10 @@ final class PQCPrivateKey extends PKCS8Key {
                     }
                     System.out.println();
                     this.pqcKey = PQCKey.createPrivateKey(
-                                this.name, pkOct.toByteArray(), provider);
+                                this.name, pkOctBytes, provider);
                 } else {
                     System.out.println("This is a not a seed/expanded key, maybe a RAW keyBytes");
-                    pkOct = new DerValue(DerValue.tag_OctetString, keyBytes);
+                    pkOct = new DerValue(DerValue.tag_OctetString, key);
                     byte[] pkOctBytes = pkOct.toByteArray();
                     System.out.println("PQCPrivateKey(keyBytes, algName)pkOctBytes length = " + pkOctBytes.length);
                     System.out.print("PQCPrivateKey(keyBytes, algName)pkOctBytes first bytes = ");
@@ -88,7 +90,7 @@ final class PQCPrivateKey extends PKCS8Key {
                     }
                     System.out.println();
                     this.pqcKey = PQCKey.createPrivateKey(
-                                this.name, pkOct.toByteArray(), provider);
+                                this.name, pkOctBytes, provider);
                 }
                 this.privKeyMaterial = keyBytes.clone();
 

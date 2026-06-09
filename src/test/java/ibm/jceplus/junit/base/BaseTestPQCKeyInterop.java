@@ -291,6 +291,11 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         //BC is using a different encoding today for thier ML-DSA private keys.
         // So we can not compare these today.
         if (getInteropProviderName().equals(Utils.PROVIDER_SunJCE)) {
+            System.out.println("privateKeyBytesInterop length = " + privateKeyBytesInterop.length);
+            System.out.println("privateKeyBytesInterop first bytes = " + toHex(privateKeyBytesInterop, 32));
+
+            System.out.println("priv.getEncoded() length = " + priv.getEncoded().length);
+            System.out.println("PQCPrivateKey(getEncoded)encodedKey first bytes = " + toHex(priv.getEncoded(), 64));
             same = Arrays.equals(privateKeyBytesInterop, priv.getEncoded());
             assertTrue(same);
         }
@@ -298,6 +303,21 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         // The original and new keys are the same
         same = Arrays.equals(publicKeyBytesInterop, pub.getEncoded());
         assertTrue(same);
+    }
+
+    private static String toHex(byte[] data, int maxLen) {
+        if (data == null) {
+            return "null";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int len = Math.min(data.length, maxLen);
+
+        for (int i = 0; i < len; i++) {
+            sb.append(String.format("%02X ", data[i] & 0xff));
+        }
+
+        return sb.toString();
     }
 
     protected KeyPair generateKeyPair(KeyPairGenerator keyPairGen) throws Exception {
