@@ -182,6 +182,7 @@ final class PQCPrivateKey extends PKCS8Key {
         DerValue pkOct = null;
         try {
             if (isSeedOnly(this.name, this.privKeyMaterial)) {
+                System.out.println("PQCPrivateKey(encoded)privKeyMaterial is seed");
                 pkOct = new DerValue(DerValue.tag_OctetString, this.privKeyMaterial);
                 byte[] pkOctBytes = pkOct.toByteArray();
                 this.pqcKey = PQCKey.createPrivateKey(
@@ -193,6 +194,7 @@ final class PQCPrivateKey extends PKCS8Key {
                 }
                 System.out.println();
             } else if (isExpanded(this.name, this.privKeyMaterial)) {
+                System.out.println("PQCPrivateKey(encoded)privKeyMaterial is expanded");
                 this.pqcKey = PQCKey.createPrivateKey(
                                 this.name, this.privKeyMaterial, provider);
             } else {
@@ -202,7 +204,9 @@ final class PQCPrivateKey extends PKCS8Key {
         } catch (Exception e) {
             throw new InvalidKeyException("Invalid key " + e.getMessage(), e);
         } finally {
-            pkOct.clear();
+            if (pkOct != null) {
+                pkOct.clear();
+            }
         }
     }
 
