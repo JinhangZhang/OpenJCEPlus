@@ -774,8 +774,32 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         // This test is for SunJCE/OpenJCEPlus interop, not BC.
         assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName()));
 
-        doGetKeySpecPrivateInteropToPlus(
-                algorithm, getInteropProviderName(), getProviderName());
+        KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, getProviderName());
+        KeyPairGenerator interopKpg = KeyPairGenerator.getInstance(algorithm, getInteropProviderName());
+        KeyPair interopKeyPair = interopKpg.generateKeyPair();
+        PrivateKey interopPrivateKey = interopKeyPair.getPrivate();
+        KeySpec interopPrivKeySpec = new PKCS8EncodedKeySpec(interopPrivateKey.getEncoded());
+        PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(interopPrivKeySpec);
+
+        KEM interopKem = KEM.getInstance(algorithm, getInteropProviderName());
+        KEM.Encapsulator encapsulator =
+                interopKem.newEncapsulator(interopKeyPair.getPublic());
+
+        KEM.Encapsulated encapsulated = encapsulator.encapsulate();
+
+        KEM openjceplusKem = KEM.getInstance(algorithm, getProviderName());
+        KEM.Decapsulator decapsulator =
+                openjceplusKem.newDecapsulator(openjceplusPrivateKey);
+
+        SecretKey openjceplusSecret =
+                decapsulator.decapsulate(encapsulated.encapsulation());
+
+        assertArrayEquals(encapsulated.key().getEncoded(),
+            openjceplusSecret.getEncoded());
+
+        KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, interopPrivKeySpec.getClass());
+        assertEquals(interopPrivKeySpec.getClass(), keySpec.getClass());
+        assertPrivateKeyPKCS8SpecEquals(interopPrivKeySpec, keySpec);
         
         // doGetSeedRawKeySpecPrivateToPlus(algorithm, getProviderName());
     }
@@ -794,40 +818,24 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         // This test is for SunJCE/OpenJCEPlus interop, not BC.
         assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName2()));
 
-        doGetKeySpecPrivateInteropToPlus(
-                algorithm, getInteropProviderName2(), getProviderName());
 
-        // doGetSeedRawKeySpecPrivateToPlus(algorithm, getProviderName());
-    }
-
-    private void doGetKeySpecPrivateInteropToPlus(String algorithm,
-            String interopProviderName, String openjceplusProviderName) throws Exception {
-        KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, openjceplusProviderName);
-        KeyPairGenerator interopKpg = KeyPairGenerator.getInstance(algorithm, interopProviderName);
+        KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, getProviderName());
+        KeyPairGenerator interopKpg = KeyPairGenerator.getInstance(algorithm, getInteropProviderName2());
         KeyPair interopKeyPair = interopKpg.generateKeyPair();
         PrivateKey interopPrivateKey = interopKeyPair.getPrivate();
         KeySpec interopPrivKeySpec = new PKCS8EncodedKeySpec(interopPrivateKey.getEncoded());
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(interopPrivKeySpec);
 
-        KEM interopKem = KEM.getInstance(algorithm, interopProviderName);
-        KEM.Encapsulator encapsulator =
-                interopKem.newEncapsulator(interopKeyPair.getPublic());
+        Signature signerPlus = Signature.getInstance(algorithm, getProviderName());
+        signerPlus.initSign(openjceplusPrivateKey);
+        signerPlus.update(origMsg);
+        byte[] signaturePlus = signerPlus.sign();
 
-        KEM.Encapsulated encapsulated = encapsulator.encapsulate();
-
-        KEM openjceplusKem = KEM.getInstance(algorithm, openjceplusProviderName);
-        KEM.Decapsulator decapsulator =
-                openjceplusKem.newDecapsulator(openjceplusPrivateKey);
-
-        SecretKey openjceplusSecret =
-                decapsulator.decapsulate(encapsulated.encapsulation());
-
-        assertArrayEquals(encapsulated.key().getEncoded(),
-            openjceplusSecret.getEncoded());
-
-        KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, interopPrivKeySpec.getClass());
-        assertEquals(interopPrivKeySpec.getClass(), keySpec.getClass());
-        assertPrivateKeyPKCS8SpecEquals(interopPrivKeySpec, keySpec);
+        Signature verifierInterop = Signature.getInstance(algorithm, getInteropProviderName2());
+        verifierInterop.initVerify(interopKeyPair.getPublic());
+        verifierInterop.update(origMsg);
+        assertTrue(verifierInterop.verify(signaturePlus), "Signature verification failed");
+        // doGetSeedRawKeySpecPrivateToPlus(algorithm, getProviderName());
     }
 
     private void assertPrivateKeyPKCS8SpecEquals(KeySpec expected, KeySpec actual) {
