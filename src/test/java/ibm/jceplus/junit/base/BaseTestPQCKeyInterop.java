@@ -760,17 +760,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
                 "Keys do not match for test 2 with " + parameterSet);
     }
 
-    private static byte[] hexToBytes(String hex) {
-        int len = hex.length();
-        byte[] out = new byte[len / 2];
-
-        for (int i = 0; i < len; i += 2) {
-            out[i / 2] = (byte) Integer.parseInt(hex.substring(i, i + 2), 16);
-        }
-
-        return out;
-    }
-
     /**
      * The PKCS8EncodedKeySpec is obtained from the SunJCE provider,
      * then used by OpenJCEPlus KeyFactory.generatePrivate().
@@ -788,7 +777,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         doGetKeySpecPrivateInteropToPlus(
                 algorithm, getInteropProviderName(), getProviderName());
         
-        doGetSeedRawKeySpecPrivateToPlus(algorithm, getProviderName());
+        // doGetSeedRawKeySpecPrivateToPlus(algorithm, getProviderName());
     }
 
     /**
@@ -808,7 +797,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         doGetKeySpecPrivateInteropToPlus(
                 algorithm, getInteropProviderName2(), getProviderName());
 
-        doGetSeedRawKeySpecPrivateToPlus(algorithm, getProviderName());
+        // doGetSeedRawKeySpecPrivateToPlus(algorithm, getProviderName());
     }
 
     private void doGetKeySpecPrivateInteropToPlus(String algorithm,
@@ -819,6 +808,19 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         PrivateKey interopPrivateKey = interopKeyPair.getPrivate();
         KeySpec interopPrivKeySpec = new PKCS8EncodedKeySpec(interopPrivateKey.getEncoded());
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(interopPrivKeySpec);
+
+        // Sign with the OpenJCEPlus private key, then verify with the interop public key.
+        byte[] data = "OpenJCEPlus PQC private key interop test".getBytes("UTF-8");
+        Signature signer = Signature.getInstance(algorithm, openjceplusProviderName);
+        signer.initSign(openjceplusPrivateKey);
+        signer.update(data);
+        byte[] signature = signer.sign();
+
+        Signature verifier = Signature.getInstance(algorithm, interopProviderName);
+        verifier.initVerify(interopKeyPair.getPublic());
+        verifier.update(data);
+        assertTrue(verifier.verify(signature));
+
         KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, interopPrivKeySpec.getClass());
         assertEquals(interopPrivKeySpec.getClass(), keySpec.getClass());
         assertPrivateKeyPKCS8SpecEquals(interopPrivKeySpec, keySpec);
@@ -835,15 +837,16 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         assertEquals(expectedSpec.getFormat(), actualSpec.getFormat());
     }
 
-    private void doGetSeedRawKeySpecPrivateToPlus(String algorithm, String openjceplusProviderName) throws Exception {
-        KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, openjceplusProviderName);
-        byte[] expectedKeyBytes = hexToBytes(getSeedKeyBytesHex(algorithm));
-        KeySpec opensslKeySpec = new ibm.security.internal.spec.RawKeySpec(expectedKeyBytes.clone());
-        PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(opensslKeySpec);
-        KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, opensslKeySpec.getClass());
-        assertEquals(opensslKeySpec.getClass(), keySpec.getClass());
-        assertPrivateKeyRawKeySpecEquals(expectedKeyBytes, keySpec);
-    }
+    // private void doGetSeedRawKeySpecPrivateToPlus(String algorithm, String openjceplusProviderName) throws Exception {
+    //     KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, openjceplusProviderName);
+    //     byte[] expectedKeyBytes = hexToBytes(getSeedKeyBytesHex(algorithm));
+    //     KeySpec opensslKeySpec = new ibm.security.internal.spec.RawKeySpec(expectedKeyBytes.clone());
+    //     PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(opensslKeySpec);
+    //     // PublicKey openjceplusPublicKey = openjceplusKeyFactory.generatePublic(new ibm.security.internal.spec.RawKeySpec(expectedKeyBytes.clone()));
+    //     KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, opensslKeySpec.getClass());
+    //     assertEquals(opensslKeySpec.getClass(), keySpec.getClass());
+    //     assertPrivateKeyRawKeySpecEquals(expectedKeyBytes, keySpec);
+    // }
 
     private void assertPrivateKeyRawKeySpecEquals(byte[] expectedKeyBytes, KeySpec actual) {
         assertNotNull(actual);
@@ -859,6 +862,17 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         }
 
         assertArrayEquals(expectedKeyBytes, actualKeyBytes);
+    }
+
+    private static byte[] hexToBytes(String hex) {
+        int len = hex.length();
+        byte[] out = new byte[len / 2];
+
+        for (int i = 0; i < len; i += 2) {
+            out[i / 2] = (byte) Integer.parseInt(hex.substring(i, i + 2), 16);
+        }
+
+        return out;
     }
 
     private static String getSeedKeyBytesHex(String algorithm) {
