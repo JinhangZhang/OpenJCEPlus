@@ -90,7 +90,7 @@ final class PQCPrivateKey extends PKCS8Key {
                     this.pqcKey = PQCKey.createPrivateKey(
                                 this.name, pkOct.toByteArray(), provider);
                 }
-                this.privKeyMaterial = keyBytes;
+                this.privKeyMaterial = keyBytes.clone();
 
                 System.out.println("PQCPrivateKey(keyBytes, algName)this.privKeyMaterial length = " + this.privKeyMaterial.length);
                 System.out.print("PQCPrivateKey(keyBytes, algName)this.privKeyMaterial first bytes = ");
