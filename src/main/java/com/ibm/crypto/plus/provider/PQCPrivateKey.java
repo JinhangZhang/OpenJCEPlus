@@ -98,7 +98,6 @@ final class PQCPrivateKey extends PKCS8Key {
                     System.out.printf("%02X ", this.privKeyMaterial[i] & 0xFF);
                 }
                 System.out.println();
-
             } finally {
                 pkOct.clear();
             }
