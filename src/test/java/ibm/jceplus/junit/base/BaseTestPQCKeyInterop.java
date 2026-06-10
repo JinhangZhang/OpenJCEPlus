@@ -749,7 +749,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         assumeFalse("OpenJCEPlusFIPS".equals(getProviderName()));
 
         // This test is for SunJCE/OpenJCEPlus interop, not BC.
-        assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName()));
+        // assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName()));
 
         KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, getProviderName());
         KeyPairGenerator interopKpg = KeyPairGenerator.getInstance(algorithm, getInteropProviderName());
@@ -787,7 +787,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         assumeFalse("OpenJCEPlusFIPS".equals(getProviderName()));
 
         // This test is for SunJCE/OpenJCEPlus interop, not BC.
-        assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName2()));
+        // assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName2()));
 
         KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, getProviderName());
         KeyPairGenerator interopKpg = KeyPairGenerator.getInstance(algorithm, getInteropProviderName2());
