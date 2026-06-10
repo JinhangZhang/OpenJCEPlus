@@ -28,7 +28,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
@@ -42,24 +41,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
     protected KeyFactory keyFactoryInterop;
 
     byte[] origMsg = "this is the original message to be signed".getBytes();
-
-    private static final String ML_DSA_44_SEED_KEY_BYTES =
-            "8020F8E22761ACE0E5FF348B8759A6D05EFD1F4A1EF6C476C0B4EAB6483B4722689E";
-
-    private static final String ML_DSA_65_SEED_KEY_BYTES =
-            "8020DC935C0C8C69ACA98A27780E439A35F564614593E8DC6DCCD8F8B213FC9E61E7";
-
-    private static final String ML_DSA_87_SEED_KEY_BYTES =
-            "802041A323CC1AEB2C82AF4FE634532EAE0366E09DBC0FA02633D71D3D851D423478";
-
-    private static final String ML_KEM_512_SEED_KEY_BYTES =
-            "804020101D73F723F572BE536BD9AE33528A05483BC522E4441A02BB0D5FFB207A27FC191252AA2A3545DBC323D249666682EDD087C611830297EEE93401A9239F21";
-
-    private static final String ML_KEM_768_SEED_KEY_BYTES =
-            "80406836AAA0EEF496BF22FBA202C69D35DA337DE1691B0A0EAA5D385DED0D59B73E20BDA8C6F5887731464046736D1A0A7425C791ECB79C2D16AA245E264D2E9EE4";
-
-    private static final String ML_KEM_1024_SEED_KEY_BYTES =
-            "80403B2013BE19C2654F0AEA58856AF78A7A24F22595EF89DCEF0F6135D475E1612429F6D01440671F4733899875FCCE17BD6015B03599F0DA27DBC7C32E981284DF";
 
     @Test
     public void testPQCKeyGenKEM_PlusToInterop() throws Exception {
@@ -760,10 +741,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
                 "Keys do not match for test 2 with " + parameterSet);
     }
 
-    /**
-     * The PKCS8EncodedKeySpec is obtained from the SunJCE provider,
-     * then used by OpenJCEPlus KeyFactory.generatePrivate().
-     */
     @ParameterizedTest
     @CsvSource({"ML-KEM", "ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"})
     public void testMLKEMGetKeySpecPrivateInteropToPlus(String algorithm)
@@ -800,14 +777,8 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, interopPrivKeySpec.getClass());
         assertEquals(interopPrivKeySpec.getClass(), keySpec.getClass());
         assertPrivateKeyPKCS8SpecEquals(interopPrivKeySpec, keySpec);
-        
-        // doGetSeedRawKeySpecPrivateToPlus(algorithm, getProviderName());
     }
 
-    /**
-     * The PKCS8EncodedKeySpec is obtained from the SUN provider,
-     * then used by OpenJCEPlus KeyFactory.generatePrivate().
-     */
     @ParameterizedTest
     @CsvSource({"ML-DSA", "ML-DSA-44", "ML-DSA-65", "ML-DSA-87"})
     public void testMLDSAGetKeySpecPrivateInteropToPlus(String algorithm)
@@ -817,7 +788,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
 
         // This test is for SunJCE/OpenJCEPlus interop, not BC.
         assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName2()));
-
 
         KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, getProviderName());
         KeyPairGenerator interopKpg = KeyPairGenerator.getInstance(algorithm, getInteropProviderName2());
@@ -835,7 +805,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         verifierInterop.initVerify(interopKeyPair.getPublic());
         verifierInterop.update(origMsg);
         assertTrue(verifierInterop.verify(signaturePlus), "Signature verification failed");
-        // doGetSeedRawKeySpecPrivateToPlus(algorithm, getProviderName());
     }
 
     private void assertPrivateKeyPKCS8SpecEquals(KeySpec expected, KeySpec actual) {
@@ -848,70 +817,4 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         assertEquals(expectedSpec.getAlgorithm(), actualSpec.getAlgorithm());
         assertEquals(expectedSpec.getFormat(), actualSpec.getFormat());
     }
-
-    // private void doGetSeedRawKeySpecPrivateToPlus(String algorithm, String openjceplusProviderName) throws Exception {
-    //     KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, openjceplusProviderName);
-    //     byte[] expectedKeyBytes = hexToBytes(getSeedKeyBytesHex(algorithm));
-    //     KeySpec opensslKeySpec = new ibm.security.internal.spec.RawKeySpec(expectedKeyBytes.clone());
-    //     PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(opensslKeySpec);
-    //     // PublicKey openjceplusPublicKey = openjceplusKeyFactory.generatePublic(new ibm.security.internal.spec.RawKeySpec(expectedKeyBytes.clone()));
-    //     KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, opensslKeySpec.getClass());
-    //     assertEquals(opensslKeySpec.getClass(), keySpec.getClass());
-    //     assertPrivateKeyRawKeySpecEquals(expectedKeyBytes, keySpec);
-    // }
-
-    // private void assertPrivateKeyRawKeySpecEquals(byte[] expectedKeyBytes, KeySpec actual) {
-    //     assertNotNull(actual);
-
-    //     byte[] actualKeyBytes = null;
-
-    //     if (actual instanceof ibm.security.internal.spec.RawKeySpec) {
-    //         actualKeyBytes = ((ibm.security.internal.spec.RawKeySpec) actual).getKeyArr();
-    //     } else if (actual instanceof sun.security.util.RawKeySpec) {
-    //         actualKeyBytes = ((sun.security.util.RawKeySpec) actual).getKeyArr();
-    //     } else {
-    //         fail("Unsupported KeySpec type: " + actual.getClass().getName());
-    //     }
-
-    //     assertArrayEquals(expectedKeyBytes, actualKeyBytes);
-    // }
-
-    // private static byte[] hexToBytes(String hex) {
-    //     int len = hex.length();
-    //     byte[] out = new byte[len / 2];
-
-    //     for (int i = 0; i < len; i += 2) {
-    //         out[i / 2] = (byte) Integer.parseInt(hex.substring(i, i + 2), 16);
-    //     }
-
-    //     return out;
-    // }
-
-    // private static String getSeedKeyBytesHex(String algorithm) {
-    //     switch (algorithm) {
-    //         case "ML-DSA":
-    //         case "ML-DSA-65":
-    //             return ML_DSA_65_SEED_KEY_BYTES;
-
-    //         case "ML-DSA-44":
-    //             return ML_DSA_44_SEED_KEY_BYTES;
-
-    //         case "ML-DSA-87":
-    //             return ML_DSA_87_SEED_KEY_BYTES;
-
-    //         case "ML-KEM":
-    //         case "ML-KEM-768":
-    //             return ML_KEM_768_SEED_KEY_BYTES;
-
-    //         case "ML-KEM-512":
-    //             return ML_KEM_512_SEED_KEY_BYTES;
-
-    //         case "ML-KEM-1024":
-    //             return ML_KEM_1024_SEED_KEY_BYTES;
-
-    //         default:
-    //             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm);
-    //     }
-    // }
-
 }
