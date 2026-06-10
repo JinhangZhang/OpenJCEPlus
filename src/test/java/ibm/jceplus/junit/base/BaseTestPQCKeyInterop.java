@@ -291,13 +291,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         //BC is using a different encoding today for thier ML-DSA private keys.
         // So we can not compare these today.
         if (getInteropProviderName().equals(Utils.PROVIDER_SunJCE)) {
-            System.out.println("===============================================");
-            System.out.println("testPQCKeyGenMLDSA_PlusToInteropRAW -> privateKeyBytesInterop length = " + privateKeyBytesInterop.length);
-            System.out.println("testPQCKeyGenMLDSA_PlusToInteropRAW -> privateKeyBytesInterop first bytes = " + toHex(privateKeyBytesInterop, privateKeyBytesInterop.length));
-
-            System.out.println("testPQCKeyGenMLDSA_PlusToInteropRAW -> priv.getEncoded() length = " + priv.getEncoded().length);
-            System.out.println("testPQCKeyGenMLDSA_PlusToInteropRAW -> encodedKey first bytes = " + toHex(priv.getEncoded(), priv.getEncoded().length));
-            System.out.println("===============================================");
             same = Arrays.equals(privateKeyBytesInterop, priv.getEncoded());
             assertTrue(same);
         }
@@ -305,21 +298,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         // The original and new keys are the same
         same = Arrays.equals(publicKeyBytesInterop, pub.getEncoded());
         assertTrue(same);
-    }
-
-    private static String toHex(byte[] data, int maxLen) {
-        if (data == null) {
-            return "null";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        int len = Math.min(data.length, maxLen);
-
-        for (int i = 0; i < len; i++) {
-            sb.append(String.format("%02X ", data[i] & 0xff));
-        }
-
-        return sb.toString();
     }
 
     protected KeyPair generateKeyPair(KeyPairGenerator keyPairGen) throws Exception {
@@ -882,58 +860,58 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
     //     assertPrivateKeyRawKeySpecEquals(expectedKeyBytes, keySpec);
     // }
 
-    private void assertPrivateKeyRawKeySpecEquals(byte[] expectedKeyBytes, KeySpec actual) {
-        assertNotNull(actual);
+    // private void assertPrivateKeyRawKeySpecEquals(byte[] expectedKeyBytes, KeySpec actual) {
+    //     assertNotNull(actual);
 
-        byte[] actualKeyBytes = null;
+    //     byte[] actualKeyBytes = null;
 
-        if (actual instanceof ibm.security.internal.spec.RawKeySpec) {
-            actualKeyBytes = ((ibm.security.internal.spec.RawKeySpec) actual).getKeyArr();
-        } else if (actual instanceof sun.security.util.RawKeySpec) {
-            actualKeyBytes = ((sun.security.util.RawKeySpec) actual).getKeyArr();
-        } else {
-            fail("Unsupported KeySpec type: " + actual.getClass().getName());
-        }
+    //     if (actual instanceof ibm.security.internal.spec.RawKeySpec) {
+    //         actualKeyBytes = ((ibm.security.internal.spec.RawKeySpec) actual).getKeyArr();
+    //     } else if (actual instanceof sun.security.util.RawKeySpec) {
+    //         actualKeyBytes = ((sun.security.util.RawKeySpec) actual).getKeyArr();
+    //     } else {
+    //         fail("Unsupported KeySpec type: " + actual.getClass().getName());
+    //     }
 
-        assertArrayEquals(expectedKeyBytes, actualKeyBytes);
-    }
+    //     assertArrayEquals(expectedKeyBytes, actualKeyBytes);
+    // }
 
-    private static byte[] hexToBytes(String hex) {
-        int len = hex.length();
-        byte[] out = new byte[len / 2];
+    // private static byte[] hexToBytes(String hex) {
+    //     int len = hex.length();
+    //     byte[] out = new byte[len / 2];
 
-        for (int i = 0; i < len; i += 2) {
-            out[i / 2] = (byte) Integer.parseInt(hex.substring(i, i + 2), 16);
-        }
+    //     for (int i = 0; i < len; i += 2) {
+    //         out[i / 2] = (byte) Integer.parseInt(hex.substring(i, i + 2), 16);
+    //     }
 
-        return out;
-    }
+    //     return out;
+    // }
 
-    private static String getSeedKeyBytesHex(String algorithm) {
-        switch (algorithm) {
-            case "ML-DSA":
-            case "ML-DSA-65":
-                return ML_DSA_65_SEED_KEY_BYTES;
+    // private static String getSeedKeyBytesHex(String algorithm) {
+    //     switch (algorithm) {
+    //         case "ML-DSA":
+    //         case "ML-DSA-65":
+    //             return ML_DSA_65_SEED_KEY_BYTES;
 
-            case "ML-DSA-44":
-                return ML_DSA_44_SEED_KEY_BYTES;
+    //         case "ML-DSA-44":
+    //             return ML_DSA_44_SEED_KEY_BYTES;
 
-            case "ML-DSA-87":
-                return ML_DSA_87_SEED_KEY_BYTES;
+    //         case "ML-DSA-87":
+    //             return ML_DSA_87_SEED_KEY_BYTES;
 
-            case "ML-KEM":
-            case "ML-KEM-768":
-                return ML_KEM_768_SEED_KEY_BYTES;
+    //         case "ML-KEM":
+    //         case "ML-KEM-768":
+    //             return ML_KEM_768_SEED_KEY_BYTES;
 
-            case "ML-KEM-512":
-                return ML_KEM_512_SEED_KEY_BYTES;
+    //         case "ML-KEM-512":
+    //             return ML_KEM_512_SEED_KEY_BYTES;
 
-            case "ML-KEM-1024":
-                return ML_KEM_1024_SEED_KEY_BYTES;
+    //         case "ML-KEM-1024":
+    //             return ML_KEM_1024_SEED_KEY_BYTES;
 
-            default:
-                throw new IllegalArgumentException("Unsupported algorithm: " + algorithm);
-        }
-    }
+    //         default:
+    //             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm);
+    //     }
+    // }
 
 }
