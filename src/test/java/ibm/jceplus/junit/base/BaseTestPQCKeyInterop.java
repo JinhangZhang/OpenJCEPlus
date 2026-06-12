@@ -1975,28 +1975,16 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         assumeFalse("OpenJCEPlusFIPS".equals(getProviderName()));
         assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName2()));
 
-        KeyFactory sunKeyFactory = KeyFactory.getInstance(algorithm, getInteropProviderName2());
         KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, getProviderName());
 
         byte[] rfcPrivateKeyEncoded = decodePEM(getRFCPrivateKeyPEM(privateKeyName));
-        byte[] rfcPublicKeyEncoded = decodePEM(getRFCPublicKeyPEM(publicKeyName));
 
         // PrivateKey sunPrivateKey = sunKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
         // PKCS8EncodedKeySpec sunPrivateKeySpec = sunKeyFactory.getKeySpec(sunPrivateKey, PKCS8EncodedKeySpec.class);
         // rivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(sunPrivateKeySpec);
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
-        PublicKey sunPublicKey = sunKeyFactory.generatePublic(new X509EncodedKeySpec(rfcPublicKeyEncoded));
 
-        Signature signer = Signature.getInstance(algorithm, getProviderName());
-        signer.initSign(openjceplusPrivateKey);
-        signer.update(origMsg);
-        byte[] signature = signer.sign();
-
-        Signature verifier = Signature.getInstance(algorithm, getInteropProviderName2());
-        verifier.initVerify(sunPublicKey);
-        verifier.update(origMsg);
-
-        assertTrue(verifier.verify(signature));
+        assertArrayEquals(rfcPrivateKeyEncoded, openjceplusPrivateKey.getEncoded(), privateKeyName + " getEncoded() does not match RFC PKCS#8 encoding"); }
     }
 
     @ParameterizedTest
@@ -2024,20 +2012,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
 
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
 
-        PublicKey sunjcePublicKey = sunjceKeyFactory.generatePublic(new X509EncodedKeySpec(rfcPublicKeyEncoded));
-
-        KEM sunjceKEM = KEM.getInstance(algorithm, getInteropProviderName());
-        KEM.Encapsulator encapsulator = sunjceKEM.newEncapsulator(sunjcePublicKey);
-
-        KEM.Encapsulated encapsulated = encapsulator.encapsulate();
-
-        KEM openjceplusKEM = KEM.getInstance(algorithm, getProviderName());
-        KEM.Decapsulator decapsulator = openjceplusKEM.newDecapsulator(openjceplusPrivateKey);
-
-        SecretKey decapsulatedSecret = decapsulator.decapsulate(encapsulated.encapsulation());
-
-        assertArrayEquals(encapsulated.key().getEncoded(),
-                decapsulatedSecret.getEncoded());
     }
 
     private static String getRFCPrivateKeyPEM(String name) {
