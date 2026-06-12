@@ -1958,18 +1958,20 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
             "ML-DSA-44, RFC9881_ML_DSA_44_PRIVATE_KEY_SEED,     RFC9881_ML_DSA_44_PUBLIC_KEY",
             "ML-DSA-44, RFC9881_ML_DSA_44_PRIVATE_KEY_EXPANDED, RFC9881_ML_DSA_44_PUBLIC_KEY",
             "ML-DSA-44, RFC9881_ML_DSA_44_PRIVATE_KEY_BOTH,     RFC9881_ML_DSA_44_PUBLIC_KEY",
+
             "ML-DSA-65, RFC9881_ML_DSA_65_PRIVATE_KEY_SEED,     RFC9881_ML_DSA_65_PUBLIC_KEY",
             "ML-DSA-65, RFC9881_ML_DSA_65_PRIVATE_KEY_EXPANDED, RFC9881_ML_DSA_65_PUBLIC_KEY",
             "ML-DSA-65, RFC9881_ML_DSA_65_PRIVATE_KEY_BOTH,     RFC9881_ML_DSA_65_PUBLIC_KEY",
+
             "ML-DSA-87, RFC9881_ML_DSA_87_PRIVATE_KEY_SEED,     RFC9881_ML_DSA_87_PUBLIC_KEY",
             "ML-DSA-87, RFC9881_ML_DSA_87_PRIVATE_KEY_EXPANDED, RFC9881_ML_DSA_87_PUBLIC_KEY",
-            "ML-DSA-87, RFC9881_ML_DSA_87_PRIVATE_KEY_BOTH,     RFC9881_ML_DSA_87_PUBLIC_KEY"
+            "ML-DSA-87, RFC9881_ML_DSA_87_PRIVATE_KEY_BOTH,     RFC9881_ML_DSA_87_PUBLIC_KEY",
     })
     public void testRFC9881MLDSAKeyFactorySignVerify(String algorithm,
             String privateKeyName, String publicKeyName) throws Exception {
 
         assumeFalse("OpenJCEPlusFIPS".equals(getProviderName()));
-        assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName()));
+        assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName2()));
 
         KeyFactory sunKeyFactory = KeyFactory.getInstance(algorithm, getInteropProviderName2());
         KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, getProviderName());
@@ -1977,21 +1979,18 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         byte[] rfcPrivateKeyEncoded = decodePEM(getRFCPrivateKeyPEM(privateKeyName));
         byte[] rfcPublicKeyEncoded = decodePEM(getRFCPublicKeyPEM(publicKeyName));
 
-        PrivateKey sunPrivateKey = sunKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
+        PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
         PublicKey sunPublicKey = sunKeyFactory.generatePublic(new X509EncodedKeySpec(rfcPublicKeyEncoded));
-
-        PKCS8EncodedKeySpec sunPrivateKeySpec = sunKeyFactory.getKeySpec(sunPrivateKey, PKCS8EncodedKeySpec.class);
-
-        PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(sunPrivateKeySpec);
 
         Signature signer = Signature.getInstance(algorithm, getProviderName());
         signer.initSign(openjceplusPrivateKey);
         signer.update(origMsg);
         byte[] signature = signer.sign();
 
-        Signature verifier = Signature.getInstance(algorithm, "SUN");
+        Signature verifier = Signature.getInstance(algorithm, getInteropProviderName2());
         verifier.initVerify(sunPublicKey);
         verifier.update(origMsg);
+
         assertTrue(verifier.verify(signature));
     }
 
@@ -2008,9 +2007,9 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
             "ML-KEM-1024, RFC9935_ML_KEM_1024_PRIVATE_KEY_BOTH,     RFC9935_ML_KEM_1024_PUBLIC_KEY",
     })
     public void testRFC9935MLKEMKeyFactoryEncapsulateDecapsulate(String algorithm,
-            String privateKeyName, String publicKeyName) throws Exception {
-
+        String privateKeyName, String publicKeyName) throws Exception {
         assumeFalse("OpenJCEPlusFIPS".equals(getProviderName()));
+        assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName2()));
 
         KeyFactory sunjceKeyFactory = KeyFactory.getInstance(algorithm, getInteropProviderName());
         KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, getProviderName());
@@ -2018,15 +2017,13 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         byte[] rfcPrivateKeyEncoded = decodePEM(getRFCPrivateKeyPEM(privateKeyName));
         byte[] rfcPublicKeyEncoded = decodePEM(getRFCPublicKeyPEM(publicKeyName));
 
-        PrivateKey sunjcePrivateKey = sunjceKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
+        PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
+
         PublicKey sunjcePublicKey = sunjceKeyFactory.generatePublic(new X509EncodedKeySpec(rfcPublicKeyEncoded));
-
-        PKCS8EncodedKeySpec sunPrivateKeySpec = sunjceKeyFactory.getKeySpec(sunjcePrivateKey, PKCS8EncodedKeySpec.class);
-
-        PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(sunPrivateKeySpec);
 
         KEM sunjceKEM = KEM.getInstance(algorithm, getInteropProviderName());
         KEM.Encapsulator encapsulator = sunjceKEM.newEncapsulator(sunjcePublicKey);
+
         KEM.Encapsulated encapsulated = encapsulator.encapsulate();
 
         KEM openjceplusKEM = KEM.getInstance(algorithm, getProviderName());
@@ -2034,7 +2031,8 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
 
         SecretKey decapsulatedSecret = decapsulator.decapsulate(encapsulated.encapsulation());
 
-        assertArrayEquals(encapsulated.key().getEncoded(), decapsulatedSecret.getEncoded());
+        assertArrayEquals(encapsulated.key().getEncoded(),
+                decapsulatedSecret.getEncoded());
     }
 
     private static String getRFCPrivateKeyPEM(String name) {
