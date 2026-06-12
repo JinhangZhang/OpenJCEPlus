@@ -1979,6 +1979,9 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         byte[] rfcPrivateKeyEncoded = decodePEM(getRFCPrivateKeyPEM(privateKeyName));
         byte[] rfcPublicKeyEncoded = decodePEM(getRFCPublicKeyPEM(publicKeyName));
 
+        // PrivateKey sunPrivateKey = sunKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
+        // PKCS8EncodedKeySpec sunPrivateKeySpec = sunKeyFactory.getKeySpec(sunPrivateKey, PKCS8EncodedKeySpec.class);
+        // rivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(sunPrivateKeySpec);
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
         PublicKey sunPublicKey = sunKeyFactory.generatePublic(new X509EncodedKeySpec(rfcPublicKeyEncoded));
 

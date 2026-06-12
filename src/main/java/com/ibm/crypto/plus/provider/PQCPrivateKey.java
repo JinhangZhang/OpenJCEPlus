@@ -43,6 +43,7 @@ final class PQCPrivateKey extends PKCS8Key {
      */
     PQCPrivateKey(OpenJCEPlusProvider provider, byte[] keyBytes, String algName)
             throws InvalidKeyException {
+        System.out.println("=================PQCPrivateKey(keybytes, algname)=================");
         this.algid = new AlgorithmId(PQCAlgorithmId.getOID(algName));
         this.name = PQCKnownOIDs.findMatch(this.algid.getName()).stdName();
         this.provider = provider;
@@ -65,9 +66,15 @@ final class PQCPrivateKey extends PKCS8Key {
         try {
             try {
                 pkOct = new DerValue(DerValue.tag_OctetString, key);
+                byte[] pkOctBytes = pkOct.toByteArray();
+                System.out.println("PQCPrivateKey(keyBytes, algName)pkOctBytes length = " + pkOctBytes.length);
+                System.out.print("PQCPrivateKey(keyBytes, algName)pkOctBytes first bytes = ");
+                for (int i = 0; i < Math.min(32, pkOctBytes.length); i++) {
+                    System.out.printf("%02X ", pkOctBytes[i] & 0xFF);
+                }
                 this.pqcKey = PQCKey.createPrivateKey(
-                                this.name, pkOct.toByteArray(), provider);
-                this.privKeyMaterial = pkOct.toByteArray();
+                                this.name, pkOctBytes, provider);
+                this.privKeyMaterial = pkOctBytes;
             } finally {
                 pkOct.clear();
             }
@@ -82,6 +89,7 @@ final class PQCPrivateKey extends PKCS8Key {
      * @param pqcKey the PQCKey to be used to create the private key
      */
     PQCPrivateKey(OpenJCEPlusProvider provider, PQCKey pqcKey) throws InvalidKeyException {
+        System.out.println("=================PQCPrivateKey(pqckey)=================");
         try {
             this.provider = provider;
             this.pqcKey = pqcKey;
@@ -93,8 +101,13 @@ final class PQCPrivateKey extends PKCS8Key {
                 DerValue pkOct = null;
                 try {
                     pkOct = new DerValue(DerValue.tag_OctetString, pqcKey.getPrivateKeyBytes());
-
-                    this.privKeyMaterial = pkOct.toByteArray();
+                    byte[] pkOctBytes = pkOct.toByteArray();
+                    this.privKeyMaterial = pkOctBytes;
+                    System.out.println("PQCPrivateKey(pqckey)pkOctBytes length = " + pkOctBytes.length);
+                    System.out.print("PQCPrivateKey(pqckey)pkOctBytes first bytes = ");
+                    for (int i = 0; i < Math.min(32, pkOctBytes.length); i++) {
+                        System.out.printf("%02X ", pkOctBytes[i] & 0xFF);
+                    }
                 } finally {
                     pkOct.clear();
                 }
@@ -117,6 +130,7 @@ final class PQCPrivateKey extends PKCS8Key {
      * @param encoded   the encoded PKCS#8 key
      */
     PQCPrivateKey(OpenJCEPlusProvider provider, byte[] encoded) throws InvalidKeyException {
+        System.out.println("=================PQCPrivateKey(encoded)=================");
         super(encoded);
         this.provider = provider;
 
@@ -131,8 +145,13 @@ final class PQCPrivateKey extends PKCS8Key {
             DerValue pkOct = null;
             try {
                 pkOct = new DerValue(DerValue.tag_OctetString, this.privKeyMaterial);
-
-                this.privKeyMaterial = pkOct.toByteArray();
+                byte[] pkOctBytes = pkOct.toByteArray();
+                this.privKeyMaterial = pkOctBytes;
+                System.out.println("PQCPrivateKey(encoded)pkOctBytes length = " + pkOctBytes.length);
+                System.out.print("PQCPrivateKey(encoded)pkOctBytes first bytes = ");
+                for (int i = 0; i < Math.min(32, pkOctBytes.length); i++) {
+                    System.out.printf("%02X ", pkOctBytes[i] & 0xFF);
+                }
             } finally {
                 pkOct.clear();
             }
@@ -174,8 +193,19 @@ final class PQCPrivateKey extends PKCS8Key {
             bytes.putOID(algid.getOID());
             tmp.write(DerValue.tag_Sequence, bytes);
             if (isSeed) {
+                System.out.println("This is a seed");
                 tmp.write(this.privKeyMaterial);
+                System.out.println("privKeyMaterial length = "
+                + (this.privKeyMaterial.length));
+                System.out.println("privKeyMaterial first bytes = "
+                        + toHex(this.privKeyMaterial, 32));
             } else {
+                System.out.println("This is not a seed");
+                tmp.write(this.privKeyMaterial);
+                System.out.println("privKeyMaterial length = "
+                + (this.privKeyMaterial.length));
+                System.out.println("privKeyMaterial first bytes = "
+                        + toHex(this.privKeyMaterial, 32));
                 tmp.putOctetString(this.privKeyMaterial);
             } 
             DerValue out = DerValue.wrap(DerValue.tag_Sequence, tmp);
@@ -271,5 +301,20 @@ final class PQCPrivateKey extends PKCS8Key {
         return (key.length == seedLen + 2)
                 && ((key[0] & 0xFF) == 0x80)
                 && ((key[1] & 0xFF) == seedLen);
+    }
+
+    private static String toHex(byte[] data, int maxLen) {
+        if (data == null) {
+            return "null";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int len = Math.min(data.length, maxLen);
+
+        for (int i = 0; i < len; i++) {
+            sb.append(String.format("%02X ", data[i] & 0xff));
+        }
+
+        return sb.toString();
     }
 }
