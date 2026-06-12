@@ -21,6 +21,7 @@ import java.security.spec.NamedParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
+import java.util.Base64;
 import javax.crypto.KEM;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Test;
