@@ -1912,6 +1912,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, interopPrivKeySpec.getClass());
         assertEquals(interopPrivKeySpec.getClass(), keySpec.getClass());
         assertPrivateKeyPKCS8SpecEquals(interopPrivKeySpec, keySpec);
+        System.out.println("1/0");
     }
 
     @ParameterizedTest
@@ -1940,6 +1941,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         verifierInterop.initVerify(interopKeyPair.getPublic());
         verifierInterop.update(origMsg);
         assertTrue(verifierInterop.verify(signaturePlus), "Signature verification failed");
+        System.out.println("1/0");
     }
 
     private void assertPrivateKeyPKCS8SpecEquals(KeySpec expected, KeySpec actual) {
