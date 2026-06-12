@@ -1910,7 +1910,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
             openjceplusSecret.getEncoded());
 
         KeySpec keySpec = openjceplusKeyFactory.getKeySpec(openjceplusPrivateKey, interopPrivKeySpec.getClass());
-        System.out.println(1/0);
         assertEquals(interopPrivKeySpec.getClass(), keySpec.getClass());
         assertPrivateKeyPKCS8SpecEquals(interopPrivKeySpec, keySpec);
     }
@@ -1940,7 +1939,6 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         Signature verifierInterop = Signature.getInstance(algorithm, getInteropProviderName2());
         verifierInterop.initVerify(interopKeyPair.getPublic());
         verifierInterop.update(origMsg);
-        System.out.println(1/0);
         assertTrue(verifierInterop.verify(signaturePlus), "Signature verification failed");
     }
 
@@ -1984,7 +1982,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         // rivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(sunPrivateKeySpec);
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
 
-        assertArrayEquals(rfcPrivateKeyEncoded, openjceplusPrivateKey.getEncoded(), privateKeyName + " getEncoded() does not match RFC PKCS#8 encoding"); }
+        assertArrayEquals(rfcPrivateKeyEncoded, openjceplusPrivateKey.getEncoded(), privateKeyName + " getEncoded() does not match RFC PKCS#8 encoding");
     }
 
     @ParameterizedTest
@@ -2004,14 +2002,13 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         assumeFalse("OpenJCEPlusFIPS".equals(getProviderName()));
         assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName2()));
 
-        KeyFactory sunjceKeyFactory = KeyFactory.getInstance(algorithm, getInteropProviderName());
         KeyFactory openjceplusKeyFactory = KeyFactory.getInstance(algorithm, getProviderName());
 
         byte[] rfcPrivateKeyEncoded = decodePEM(getRFCPrivateKeyPEM(privateKeyName));
-        byte[] rfcPublicKeyEncoded = decodePEM(getRFCPublicKeyPEM(publicKeyName));
 
         PrivateKey openjceplusPrivateKey = openjceplusKeyFactory.generatePrivate(new PKCS8EncodedKeySpec(rfcPrivateKeyEncoded));
 
+        assertArrayEquals(rfcPrivateKeyEncoded, openjceplusPrivateKey.getEncoded(), privateKeyName + " getEncoded() does not match RFC PKCS#8 encoding");
     }
 
     private static String getRFCPrivateKeyPEM(String name) {
