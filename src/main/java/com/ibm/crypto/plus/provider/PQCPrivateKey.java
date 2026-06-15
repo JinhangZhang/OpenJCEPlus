@@ -50,9 +50,7 @@ final class PQCPrivateKey extends PKCS8Key {
         byte[] key = null;
         DerValue pkOct = null;
         
-        if (isSeedOnly(this.name, keyBytes)) {
-            this.isSeed = true;
-        }
+        this.isSeed = isSeedOnly(this.name, keyBytes);
 
         //Check to determine if the key bytes already have the Octet tag.
         if (OctectStringEncoded(keyBytes)) {
@@ -103,10 +101,7 @@ final class PQCPrivateKey extends PKCS8Key {
 
             this.name = PQCKnownOIDs.findMatch(pqcKey.getAlgorithm()).stdName();
             this.algid = new AlgorithmId(PQCAlgorithmId.getOID(name));
-
-            if (isSeedOnly(this.name, pqcKey.getPrivateKeyBytes())) {
-                this.isSeed = true;
-            }
+            this.isSeed = isSeedOnly(this.name, pqcKey.getPrivateKeyBytes());
         } catch (Exception exception) {
             throw provider.providerException("Failure in PQCPrivateKey" + exception.getMessage(), exception);
         }
@@ -122,11 +117,7 @@ final class PQCPrivateKey extends PKCS8Key {
         this.provider = provider;
 
         this.name = PQCKnownOIDs.findMatch(this.algid.getName()).stdName();
-
-        if (isSeedOnly(this.name, this.privKeyMaterial)) {
-            this.isSeed = true;
-        }
-
+        this.isSeed = isSeedOnly(this.name, this.privKeyMaterial);
         //Check to determine if the key bytes have the Octet tag.
         if (!(OctectStringEncoded(this.privKeyMaterial))) {
             DerValue pkOct = null;
