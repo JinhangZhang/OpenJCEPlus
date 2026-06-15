@@ -147,12 +147,14 @@ class PQCKeyFactory extends KeyFactorySpi {
                     return key;
                 }
                 // Convert key to spec
-                X509EncodedKeySpec x509KeySpec = engineGetKeySpec(key,
-                        X509EncodedKeySpec.class);
+                // X509EncodedKeySpec x509KeySpec = engineGetKeySpec(key,
+                //         X509EncodedKeySpec.class);
+                PKCS8EncodedKeySpec pkcs8KeySpec = engineGetKeySpec(key,
+                        PKCS8EncodedKeySpec.class);
                 // PrivateKey translatedKey = engineGeneratePrivate(
                 //     new PKCS8EncodedKeySpec(key.getEncoded()));
                 // Create key from spec, and return it
-                PrivateKey translatedKey = engineGeneratePrivate(x509KeySpec);
+                PrivateKey translatedKey = engineGeneratePrivate(pkcs8KeySpec);
                 checkKeyAlgo(translatedKey);
                 return translatedKey;
                 // return engineGeneratePrivate(x509KeySpec);
