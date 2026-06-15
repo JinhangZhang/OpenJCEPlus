@@ -748,6 +748,7 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
         KeyPairGenerator sunKpg = KeyPairGenerator.getInstance(algorithm, getInteropProviderName2());
         KeyPair sunKp = sunKpg.generateKeyPair();
         PrivateKey sunPrivateKey = sunKp.getPrivate();
+        // SUN private key algorithm = ML-DSA
         System.out.println("SUN private key algorithm = " + sunPrivateKey.getAlgorithm());
 
         KeyFactory openjceplusKf = KeyFactory.getInstance(algorithm, getProviderName());
