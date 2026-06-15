@@ -126,7 +126,7 @@ class PQCKeyFactory extends KeyFactorySpi {
             throw new InvalidKeyException("Key must not be null");
         }
         // ensure the key algorithm matches the current KeyFactory instance
-        checkKeyAlgo(key);
+        // checkKeyAlgo(key);
 
         try {
             if (key instanceof java.security.PublicKey) {
@@ -140,15 +140,22 @@ class PQCKeyFactory extends KeyFactorySpi {
                 // Create key from spec, and return it
                 return engineGeneratePublic(x509KeySpec);
             } else if (key instanceof PrivateKey) {
+                System.out.println("Translating private key with algorithm: " + key.getAlgorithm());
                 // Check if key originates from this factory
                 if (key instanceof com.ibm.crypto.plus.provider.PQCPrivateKey) {
+                    System.out.println("This a PQCPrivateKey, returning as is.");
                     return key;
                 }
                 // Convert key to spec
                 X509EncodedKeySpec x509KeySpec = engineGetKeySpec(key,
                         X509EncodedKeySpec.class);
+                // PrivateKey translatedKey = engineGeneratePrivate(
+                //     new PKCS8EncodedKeySpec(key.getEncoded()));
                 // Create key from spec, and return it
-                return engineGeneratePrivate(x509KeySpec);
+                PrivateKey translatedKey = engineGeneratePrivate(x509KeySpec);
+                checkKeyAlgo(translatedKey);
+                return translatedKey;
+                // return engineGeneratePrivate(x509KeySpec);
             } else {
                 throw new InvalidKeyException("Wrong algorithm type");
             }
