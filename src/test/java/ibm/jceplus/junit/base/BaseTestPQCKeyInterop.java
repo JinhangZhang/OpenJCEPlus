@@ -739,4 +739,38 @@ public class BaseTestPQCKeyInterop extends BaseTestJunit5Interop {
                 "Keys do not match for test 2 with " + parameterSet);
     }
 
+    @ParameterizedTest
+    @CsvSource({"ML-DSA-44", "ML-DSA-65", "ML-DSA-87"})
+    public void genKeyFromSunAndTranslateToOpenJCEPlus(String algorithm) throws Exception {
+        assumeFalse("OpenJCEPlusFIPS".equals(getProviderName()));
+        assumeFalse(Utils.PROVIDER_BC.equals(getInteropProviderName()));
+
+        KeyPairGenerator sunKpg = KeyPairGenerator.getInstance(algorithm, getInteropProviderName2());
+        KeyPair sunKp = sunKpg.generateKeyPair();
+        PrivateKey sunPrivateKey = sunKp.getPrivate();
+        System.out.println("SUN private key algorithm = " + sunPrivateKey.getAlgorithm());
+
+        KeyFactory openjceplusKf = KeyFactory.getInstance(algorithm, getProviderName());
+        PrivateKey openjceplusPrivateKey= openjceplusKf.generatePrivate(new PKCS8EncodedKeySpec(sunPrivateKey.getEncoded()));
+
+        System.out.println("OpenJCEPlus generatePrivate(PKCS8) PASS");
+        System.out.println("Generated OpenJCEPlus key class = " + openjceplusPrivateKey.getClass().getName());
+
+        try {
+            PrivateKey translated = (PrivateKey) openjceplusKf.translateKey(sunPrivateKey);
+
+            System.out.println("OpenJCEPlus translateKey(SUN private key) PASS");
+            System.out.println("Translated key class = "
+                    + translated.getClass().getName());
+            System.out.println("Translated key algorithm = "
+                    + translated.getAlgorithm());
+            System.out.println("Translated key format = "
+                    + translated.getFormat());
+
+        } catch (Exception e) {
+            System.out.println("OpenJCEPlus translateKey(SUN private key) FAIL");
+            e.printStackTrace(System.out);
+            throw e;
+        }
+    }
 }
