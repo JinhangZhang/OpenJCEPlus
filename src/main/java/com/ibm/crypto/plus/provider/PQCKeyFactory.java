@@ -187,24 +187,34 @@ class PQCKeyFactory extends KeyFactorySpi {
     private void checkKeyAlgo(Key key) throws InvalidKeyException {
         String keyAlg = key.getAlgorithm();
         if (keyAlg == null) {
-            throw new InvalidKeyException("Algorithm associate with key is null.");
-        }
-        
-        // Check if algorithms match exactly or via OID lookup
-        boolean matches = key.getAlgorithm().equalsIgnoreCase(this.algName) ||
-            (PQCKnownOIDs.findMatch(key.getAlgorithm()).stdName().equalsIgnoreCase(this.algName));
-        
-        // Special case for generic ML-KEM: Allow any ML-KEM parameter set variant
-        // (ML-KEM-512, ML-KEM-768, ML-KEM-1024) when using the generic "ML-KEM" KeyFactory.
-        // This enables interoperability with KEM.getInstance("ML-KEM", ...).
-        if (!matches && "ML-KEM".equals(this.algName) && keyAlg.startsWith("ML-KEM")) {
-            matches = true;
-        }
-        
-        if (!matches) {
-            throw new InvalidKeyException("Expected a " + this.algName + " key, but got " + keyAlg);
+            throw new InvalidKeyException("Algorithm associated with key is null.");
         }
 
+        boolean matches = keyAlg.equalsIgnoreCase(this.algName);
+
+        PQCKnownOIDs knownOID = PQCKnownOIDs.findMatch(keyAlg);
+        if (!matches && knownOID != null) {
+            matches = knownOID.stdName().equalsIgnoreCase(this.algName);
+        }
+
+        // Generic ML-KEM KeyFactory accepts concrete ML-KEM parameter sets.
+        if (!matches
+                && "ML-KEM".equalsIgnoreCase(this.algName)
+                && keyAlg.regionMatches(true, 0, "ML-KEM", 0, "ML-KEM".length())) {
+            matches = true;
+        }
+
+        // Generic ML-DSA KeyFactory accepts concrete ML-DSA parameter sets.
+        if (!matches
+                && "ML-DSA".equalsIgnoreCase(this.algName)
+                && keyAlg.regionMatches(true, 0, "ML-DSA", 0, "ML-DSA".length())) {
+            matches = true;
+        }
+
+        if (!matches) {
+            throw new InvalidKeyException(
+                    "Expected a " + this.algName + " key, but got " + keyAlg);
+        }
     }
 
     private boolean checkEncoded(byte[] key, boolean pub) {
