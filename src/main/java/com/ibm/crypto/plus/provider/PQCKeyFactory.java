@@ -197,7 +197,10 @@ class PQCKeyFactory extends KeyFactorySpi {
         // Special case for generic ML-KEM: Allow any ML-KEM parameter set variant
         // (ML-KEM-512, ML-KEM-768, ML-KEM-1024) when using the generic "ML-KEM" KeyFactory.
         // This enables interoperability with KEM.getInstance("ML-KEM", ...).
-        if (!matches && "ML-KEM".equals(this.algName) && keyAlg.startsWith("ML-KEM")) {
+        if (!matches &&
+            (("ML-KEM".equals(this.algName) && keyAlg.startsWith("ML-KEM"))
+          || ("ML-DSA".equals(this.algName) && keyAlg.startsWith("ML-DSA")))
+        ) {
             matches = true;
         }
         
@@ -254,6 +257,13 @@ class PQCKeyFactory extends KeyFactorySpi {
 
         public MLKEM1024(OpenJCEPlusProvider provider) {
             super(provider, "ML-KEM-1024");
+        }
+    }
+
+    public static final class MLDSA extends PQCKeyFactory {
+
+        public MLDSA(OpenJCEPlusProvider provider) {
+            super(provider, "ML-DSA");
         }
     }
 
