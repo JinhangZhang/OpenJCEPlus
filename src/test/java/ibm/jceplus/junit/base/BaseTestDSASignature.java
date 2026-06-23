@@ -8,6 +8,7 @@
 
 package ibm.jceplus.junit.base;
 
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
 import java.security.KeyFactory;
@@ -21,6 +22,10 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -245,6 +250,41 @@ public class BaseTestDSASignature extends BaseTestJunit5Signature {
             signature.sign();
             updBufferSize += 32;
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "ML-DSA-44",
+            "ML-DSA-65",
+            "ML-DSA-87"
+    })
+    public void testGenericMLDSASignature(String keyAlgorithm) throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(keyAlgorithm, getProviderName());
+        KeyPair keyPair = kpg.generateKeyPair();
+
+        Signature signer = Signature.getInstance("ML-DSA", getProviderName());
+        signer.initSign(keyPair.getPrivate());
+        signer.update(origMsg);
+        byte[] signature = signer.sign();
+
+        Signature verifier = Signature.getInstance("ML-DSA", getProviderName());
+        verifier.initVerify(keyPair.getPublic());
+        verifier.update(origMsg);
+
+        assertTrue(verifier.verify(signature));
+    }
+
+    @Test
+    public void testSpecificMLDSASignatureRejectsDifferentParameterSet() throws Exception {
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("ML-DSA-65", "OpenJCEPlus");
+        KeyPair keyPair = kpg.generateKeyPair();
+
+        Signature signature = Signature.getInstance("ML-DSA-44", "OpenJCEPlus");
+
+        assertThrows(
+                InvalidKeyException.class,
+                () -> signature.initSign(keyPair.getPrivate()));
     }
 
     protected void doDSASignatureUpdates(Signature sign, int updBufferSize) throws SignatureException {
