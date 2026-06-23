@@ -86,10 +86,7 @@ abstract class PQCSignatureImpl extends SignatureSpi {
             throw new InvalidKeyException("Unsupported key type: ", e);
         }
 
-        // Validate that the alg of the key matches the alg specified on creation of this object.
-        if (this.alg != null && !((keyPrivate.getAlgorithm()).equalsIgnoreCase(this.alg))) {
-            throw new InvalidKeyException("Key must be of algorithm " + this.alg);
-        }
+        checkKeyAlgorithm(keyPrivate.getAlgorithm());
 
         try {
             this.signature.initialize(keyPrivate.getPQCKey());
@@ -110,10 +107,7 @@ abstract class PQCSignatureImpl extends SignatureSpi {
         } catch (Exception e) {
             throw new InvalidKeyException("Unsupported key type: ", e);
         }
-        // Validate that the alg of the key matches the alg specified on creation of this object.
-        if (this.alg != null && !((keyPublic.getAlgorithm()).equalsIgnoreCase(this.alg))) {
-            throw new InvalidKeyException("Expected algorithm " + this.alg + ", but got " + keyPublic.getAlgorithm());
-        }
+        checkKeyAlgorithm(keyPublic.getAlgorithm());
         try {
             this.signature.initialize(keyPublic.getPQCKey());
         } catch (Exception e) {
@@ -170,6 +164,43 @@ abstract class PQCSignatureImpl extends SignatureSpi {
         } catch (Exception e) {
             // Return false rather than throwing exception.
             return false;
+        }
+    }
+
+    private boolean isCompatibleKeyAlgorithm(String keyAlg) {
+        if (this.alg == null) {
+            return true;
+        }
+
+        if (keyAlg == null) {
+            return false;
+        }
+
+        // Parameter-set-specific Signature implementations require an exact match.
+        if (this.alg.equalsIgnoreCase(keyAlg)) {
+            return true;
+        }
+
+        // The generic ML-DSA Signature accepts all standardized ML-DSA
+        // parameter-set variants.
+        return "ML-DSA".equalsIgnoreCase(this.alg)
+                && ("ML-DSA-44".equalsIgnoreCase(keyAlg)
+                 || "ML-DSA-65".equalsIgnoreCase(keyAlg)
+                 || "ML-DSA-87".equalsIgnoreCase(keyAlg));
+    }
+
+
+    private void checkKeyAlgorithm(String keyAlg) throws InvalidKeyException {
+        if (!isCompatibleKeyAlgorithm(keyAlg)) {
+            throw new InvalidKeyException(
+                    "Expected algorithm " + this.alg + ", but got " + keyAlg);
+        }
+    }
+
+    public static final class MLDSA extends PQCSignatureImpl {
+
+        public MLDSA(OpenJCEPlusProvider provider) {
+            super(provider, "ML-DSA");
         }
     }
 
