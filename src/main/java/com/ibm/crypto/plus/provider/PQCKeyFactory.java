@@ -182,26 +182,69 @@ class PQCKeyFactory extends KeyFactorySpi {
 
     // Internal utility method for checking key algorithm
     private void checkKeyAlgo(Key key) throws InvalidKeyException {
+        // this key may have a generic name such as ML-KEM or ML-DSA
         String keyAlg = key.getAlgorithm();
         if (keyAlg == null) {
             throw new InvalidKeyException("Algorithm associate with key is null.");
         }
-        
-        // Check if algorithms match exactly or via OID lookup
-        boolean matches = key.getAlgorithm().equalsIgnoreCase(this.algName) ||
-            (PQCKnownOIDs.findMatch(key.getAlgorithm()).stdName().equalsIgnoreCase(this.algName));
-        
-        // Special case for generic ML-KEM: Allow any ML-KEM parameter set variant
-        // (ML-KEM-512, ML-KEM-768, ML-KEM-1024) when using the generic "ML-KEM" KeyFactory.
-        // This enables interoperability with KEM.getInstance("ML-KEM", ...).
-        if (!matches && "ML-KEM".equals(this.algName) && keyAlg.startsWith("ML-KEM")) {
-            matches = true;
-        }
-        
-        if (!matches) {
-            throw new InvalidKeyException("Expected a " + this.algName + " key, but got " + keyAlg);
+
+        // Exact name match
+        if (keyAlg.equalsIgnoreCase(this.algName)) {
+            return;
         }
 
+        // Specific algorithm name or OID match
+        PQCKnownOIDs knownOID = PQCKnownOIDs.findMatch(keyAlg);
+        if (knownOID != null
+                && knownOID.stdName().equalsIgnoreCase(this.algName)) {
+            return;
+        }
+
+        // Generic/specific family compatibility
+        if (isGenericFamilyMatch(keyAlg, this.algName)) {
+            return;
+        }
+
+        throw new InvalidKeyException(
+                "Expected a " + this.algName
+                        + " key, but got " + keyAlg);
+    }
+
+    private static boolean isGenericFamilyMatch(
+            String actual, String expected) {
+
+        return isMLKEMFamilyMatch(actual, expected)
+                || isMLDSAFamilyMatch(actual, expected);
+    }
+
+    private static boolean isMLKEMFamilyMatch(
+            String actual, String expected) {
+
+        return ("ML-KEM".equalsIgnoreCase(actual)
+                && isSpecificMLKEM(expected))
+                || ("ML-KEM".equalsIgnoreCase(expected)
+                && isSpecificMLKEM(actual));
+    }
+
+    private static boolean isSpecificMLKEM(String algorithm) {
+        return "ML-KEM-512".equalsIgnoreCase(algorithm)
+                || "ML-KEM-768".equalsIgnoreCase(algorithm)
+                || "ML-KEM-1024".equalsIgnoreCase(algorithm);
+    }
+
+    private static boolean isMLDSAFamilyMatch(
+            String actual, String expected) {
+
+        return ("ML-DSA".equalsIgnoreCase(actual)
+                && isSpecificMLDSA(expected))
+                || ("ML-DSA".equalsIgnoreCase(expected)
+                && isSpecificMLDSA(actual));
+    }
+
+    private static boolean isSpecificMLDSA(String algorithm) {
+        return "ML-DSA-44".equalsIgnoreCase(algorithm)
+                || "ML-DSA-65".equalsIgnoreCase(algorithm)
+                || "ML-DSA-87".equalsIgnoreCase(algorithm);
     }
 
     private boolean checkEncoded(byte[] key, boolean pub) {
