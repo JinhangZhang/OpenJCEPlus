@@ -92,28 +92,26 @@ class PQCKeyFactory extends KeyFactorySpi {
     protected <T extends KeySpec> T engineGetKeySpec(Key key, Class<T> keySpec)
             throws InvalidKeySpecException {
         try {
-            if (key instanceof com.ibm.crypto.plus.provider.PQCPublicKey) {
-                // Determine valid key specs
-                Class<?> x509KeySpec = Class.forName("java.security.spec.X509EncodedKeySpec");
-
-                if (x509KeySpec.isAssignableFrom(keySpec)) {
-                    return keySpec.cast(new X509EncodedKeySpec(key.getEncoded()));
-                } else {
-                    throw new InvalidKeySpecException("Inappropriate key specification");
+            if (key instanceof PublicKey) {
+                if (keySpec.isAssignableFrom(X509EncodedKeySpec.class)) {
+                    return keySpec.cast(
+                            new X509EncodedKeySpec(key.getEncoded()));
                 }
-            } else if (key instanceof com.ibm.crypto.plus.provider.PQCPrivateKey) {
-                // Determine valid key specs
-                Class<?> pkcs8KeySpec = Class.forName("java.security.spec.PKCS8EncodedKeySpec");
-
-                if (pkcs8KeySpec.isAssignableFrom(keySpec)) {
-                    return keySpec.cast(new PKCS8EncodedKeySpec(key.getEncoded()));
-                } else {
-                    throw new InvalidKeySpecException("Inappropriate key specification");
-                }
-
-            } else {
-                throw new InvalidKeySpecException("Inappropriate key type");
+                throw new InvalidKeySpecException(
+                        "Inappropriate key specification");
             }
+
+            if (key instanceof PrivateKey) {
+                if (keySpec.isAssignableFrom(PKCS8EncodedKeySpec.class)) {
+                    return keySpec.cast(
+                            new PKCS8EncodedKeySpec(key.getEncoded()));
+                }
+                throw new InvalidKeySpecException(
+                        "Inappropriate key specification");
+            }
+
+            throw new InvalidKeySpecException("Inappropriate key type");
+
         } catch (ClassNotFoundException | ClassCastException e) {
             throw new InvalidKeySpecException("Unsupported key specification: ", e);
         }
