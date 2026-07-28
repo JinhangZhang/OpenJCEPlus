@@ -17,7 +17,7 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 public class TestRSAPSSInterop extends BaseTestRSAPSSInterop {
 
     @BeforeAll
-    public void beforeAll() {
+    public void beforeAll() throws Exception {
         Utils.loadProviderTestSuite();
         setProviderName(Utils.TEST_SUITE_PROVIDER_NAME);
         setInteropProviderName(Utils.PROVIDER_SunRsaSign);
