@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -377,6 +378,64 @@ public class BaseTestRSAPSS extends BaseTestJunit5 {
             e.printStackTrace();
             assertTrue(false);
         }
+    }
+
+    @Test
+    public void testRSAPSSSHA3224() throws Exception {
+        dotestSignaturePSSParameterSpec(content, "RSASSA-PSS", 2048,
+                new PSSParameterSpec("SHA3-224", "MGF1",
+                        new MGF1ParameterSpec("SHA3-224"), 28, 1));
+    }
+
+    @Test
+    public void testRSAPSSSHA3256() throws Exception {
+        dotestSignaturePSSParameterSpec(content, "RSASSA-PSS", 2048,
+                new PSSParameterSpec("SHA3-256", "MGF1",
+                        new MGF1ParameterSpec("SHA3-256"), 32, 1));
+    }
+
+    @Test
+    public void testRSAPSSSHA3384() throws Exception {
+        dotestSignaturePSSParameterSpec(content, "RSASSA-PSS", 2048,
+                new PSSParameterSpec("SHA3-384", "MGF1",
+                        new MGF1ParameterSpec("SHA3-384"), 48, 1));
+    }
+
+    @Test
+    public void testRSAPSSSHA3512() throws Exception {
+        dotestSignaturePSSParameterSpec(content, "RSASSA-PSS", 2048,
+                new PSSParameterSpec("SHA3-512", "MGF1",
+                        new MGF1ParameterSpec("SHA3-512"), 64, 1));
+    }
+
+    @Test
+    public void testRSAPSSSHA3DifferentMGFDigest() throws Exception {
+        Signature sig = Signature.getInstance("RSASSA-PSS", getProviderName());
+
+        PSSParameterSpec spec = new PSSParameterSpec(
+                "SHA3-256",
+                "MGF1",
+                new MGF1ParameterSpec("SHA3-384"),
+                32,
+                PSSParameterSpec.TRAILER_FIELD_BC);
+
+        assertThrows(InvalidAlgorithmParameterException.class,
+                () -> sig.setParameter(spec));
+    }
+
+    @Test
+    public void testRSAPSSAmbiguousSHA3() throws Exception {
+        Signature sig = Signature.getInstance("RSASSA-PSS", getProviderName());
+
+        PSSParameterSpec spec = new PSSParameterSpec(
+                "SHA3",
+                "MGF1",
+                new MGF1ParameterSpec("SHA3"),
+                32,
+                PSSParameterSpec.TRAILER_FIELD_BC);
+
+        assertThrows(InvalidAlgorithmParameterException.class,
+                () -> sig.setParameter(spec));
     }
 
     /**
