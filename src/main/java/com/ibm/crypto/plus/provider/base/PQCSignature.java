@@ -56,8 +56,8 @@ public final class PQCSignature {
 
         byte[] signature = null;
 
-        if (data == null || data.length == 0) {
-            throw new NativeException("No data to sign.");
+        if (data == null) {
+            throw new NativeException("Data must not be null.");
         }
 
         signature = this.nativeInterface.PQC_SIGNATURE_sign(this.key.getPKeyId(), data);
