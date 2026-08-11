@@ -64,17 +64,13 @@ Java_com_ibm_crypto_plus_provider_ock_NativeOCKImplementation_PQC_1SIGNATURE_1si
     /* Get the length of the signature to allocate */
     datalen = (*env)->GetArrayLength(env, data);
 
-    if (datalen == 0) {
-        throwOCKException(
-            env, 0, "Signature sign failed. Length of data to sign is 0.");
-        return retSigBytes;
-    }
-
-    dataNative = (unsigned char *)((*env)->GetPrimitiveArrayCritical(env, data,
+    if (datalen > 0) {
+        dataNative = (unsigned char *)((*env)->GetPrimitiveArrayCritical(env, data,
                                                                      &isCopy));
-    if (NULL == dataNative) {
-        throwOCKException(env, 0, "GetPrimitiveArrayCritical failed");
-        return retSigBytes;
+        if (NULL == dataNative) {
+            throwOCKException(env, 0, "GetPrimitiveArrayCritical failed");
+            return retSigBytes;
+        }
     }
 
     rc = ICC_EVP_PKEY_sign(ockCtx, skc, NULL, &sigLen, dataNative, datalen);
@@ -173,16 +169,19 @@ Java_com_ibm_crypto_plus_provider_ock_NativeOCKImplementation_PQC_1SIGNATURE_1ve
     } else {
         sigsize = (*env)->GetArrayLength(env, sigBytes);
 
-        dataNative = (unsigned char *)((*env)->GetPrimitiveArrayCritical(
-            env, data, &isCopy));
-
-        if (dataNative == NULL) {
-            (*env)->ReleasePrimitiveArrayCritical(env, sigBytes, sigBytesNative,
-                                                  JNI_ABORT);
-            throwOCKException(env, 0, "GetPrimitiveArrayCritical failed");
-            return verified;
-        }
         datalen = (*env)->GetArrayLength(env, data);
+
+        if (datalen > 0) {
+            dataNative = (unsigned char *)((*env)->GetPrimitiveArrayCritical(
+                env, data, &isCopy));
+
+            if (dataNative == NULL) {
+                (*env)->ReleasePrimitiveArrayCritical(env, sigBytes, sigBytesNative,
+                                                    JNI_ABORT);
+                throwOCKException(env, 0, "GetPrimitiveArrayCritical failed");
+                return verified;
+            }
+        }
 
         /* EVP context */
         evp_pk = ICC_EVP_PKEY_CTX_new(ockCtx, ockPKey, NULL);
