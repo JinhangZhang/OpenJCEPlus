@@ -8,6 +8,7 @@
 
 package com.ibm.crypto.plus.provider;
 
+import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyFactorySpi;
@@ -140,14 +141,51 @@ class PQCKeyFactory extends KeyFactorySpi {
                 // Create key from spec, and return it
                 return engineGeneratePublic(x509KeySpec);
             } else if (key instanceof PrivateKey) {
+
+                PQCKeyEncoding.Format preferredFormat;
+
+                if (this.algName.startsWith("ML-KEM")) {
+                    preferredFormat = PQCKeyEncoding.getPreferred("mlkem");
+                } else if (this.algName.startsWith("ML-DSA")) {
+                    preferredFormat = PQCKeyEncoding.getPreferred("mldsa");
+                } else {
+                    throw new InvalidKeyException(
+                            "Unsupported PQC algorithm: " + this.algName);
+                }
+
                 // Check if key originates from this factory
                 if (key instanceof com.ibm.crypto.plus.provider.PQCPrivateKey) {
+                    if (preferredFormat != PQCKeyEncoding.Format.EXPANDED_KEY) {
+                        throw new InvalidKeyException("key contains not enough info to translate");
+                    }
                     return key;
                 }
                 // Convert key to spec
                 PKCS8EncodedKeySpec pkcs8KeySpec = engineGetKeySpec(key,
                         PKCS8EncodedKeySpec.class);
                 // Create key from spec, and return it
+                try {
+                    System.out.println("1");
+                    DerValue pkcs8 = new DerValue(pkcs8KeySpec.getEncoded());
+                    DerInputStream data = pkcs8.data;
+
+                    data.getInteger();
+                    data.getDerValue();
+
+                    byte[] privateKeyBytes = data.getOctetString();
+                    System.out.println("2");
+                    if (!PQCPrivateKey.isExpandedChoice(this.algName, privateKeyBytes)) {
+                        throw new InvalidKeyException("Only expanded keys are supported by OpenJCEPlus");
+                    }
+
+                    if (preferredFormat != PQCKeyEncoding.Format.EXPANDED_KEY) {
+                        throw new InvalidKeyException("key contains not enough info to translate");
+                    }
+                    System.out.println("3");
+                } catch (IOException e) {
+                    throw new InvalidKeyException(
+                            "Invalid PKCS#8 private key encoding", e);
+                }
                 return engineGeneratePrivate(pkcs8KeySpec);
             } else {
                 throw new InvalidKeyException("Wrong algorithm type");

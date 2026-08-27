@@ -306,7 +306,11 @@ final class PQCPrivateKey extends PKCS8Key {
      * @return true if the key material is an expanded private key encoding;
      *         false otherwise
      */
-    private boolean isExpandedChoice(String algName, byte[] key) {
+    static boolean isExpandedChoice(String algName, byte[] key) {
+        if (key == null || key.length < 4) {
+            return false;
+        }
+
         int expandedLen = getExpandedKeyLength(algName);
 
         int derLen = ((key[2] & 0xFF) << 8) | (key[3] & 0xFF);
