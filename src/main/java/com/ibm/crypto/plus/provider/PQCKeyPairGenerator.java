@@ -80,6 +80,13 @@ abstract class PQCKeyPairGenerator extends KeyPairGeneratorSpi {
 
     @Override
     public KeyPair generateKeyPair() {
+        // Validate PKCS#8 encoding property before entering the catch-all block.
+        if (pqcAlg.startsWith("ML-KEM")) {
+            PQCKeyEncoding.getPreferred("mlkem");
+        } else if (pqcAlg.startsWith("ML-DSA")) {
+            PQCKeyEncoding.getPreferred("mldsa");
+        }
+
         try {
             // Set default if necessary
             switch (pqcAlg) {
