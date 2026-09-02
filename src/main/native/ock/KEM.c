@@ -60,6 +60,9 @@ Java_com_ibm_crypto_plus_provider_ock_NativeOCKImplementation_KEM_1encapsulate(
         return;
     }
 
+    wrappedkeylen = (size_t)(*env)->GetArrayLength(env, wrappedKey);
+    genkeylen     = (size_t)(*env)->GetArrayLength(env, randomKey);
+
     wrappedKeyLocal = (unsigned char *)malloc(wrappedkeylen);
     genkeylocal     = (unsigned char *)malloc(genkeylen);
     if (wrappedKeyLocal == NULL || genkeylocal == NULL) {
