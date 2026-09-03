@@ -33,8 +33,8 @@ Java_com_ibm_crypto_plus_provider_ock_NativeOCKImplementation_KEM_1encapsulate(
     ICC_EVP_PKEY     *pa              = (ICC_EVP_PKEY *)((intptr_t)ockPKeyId);
     size_t            wrappedkeylen   = 0;
     size_t            genkeylen       = 0;
-    unsigned char    *wrappedKeyLocal = NULL;
-    unsigned char    *genkeylocal     = NULL;
+    jbyte           *wrappedKeyNative = NULL;
+    jbyte           *randomKeyNative  = NULL;
 
     evp_pk = ICC_EVP_PKEY_CTX_new_from_pkey(ockCtx, NULL, pa, NULL);
     if (!evp_pk) {
@@ -60,53 +60,43 @@ Java_com_ibm_crypto_plus_provider_ock_NativeOCKImplementation_KEM_1encapsulate(
         return;
     }
 
-    wrappedkeylen = (size_t)(*env)->GetArrayLength(env, wrappedKey);
-    genkeylen     = (size_t)(*env)->GetArrayLength(env, randomKey);
-
-    wrappedKeyLocal = (unsigned char *)malloc(wrappedkeylen);
-    genkeylocal     = (unsigned char *)malloc(genkeylen);
-    if (wrappedKeyLocal == NULL || genkeylocal == NULL) {
-        if (wrappedKeyLocal != NULL) {
-            free(wrappedKeyLocal);
-        }
-        if (genkeylocal != NULL) {
-            free(genkeylocal);
-        }
+    wrappedKeyNative = (*env)->GetByteArrayElements(env, wrappedKey, NULL);
+    if (wrappedKeyNative == NULL) {
         ICC_EVP_PKEY_CTX_free(ockCtx, evp_pk);
-        throwOCKException(env, 0, "malloc failed");
+        throwOCKException(env, 0, "GetByteArrayElements failed for wrappedKey");
         return;
-    } else {
-        rc = ICC_EVP_PKEY_encapsulate(ockCtx, evp_pk, wrappedKeyLocal,
-                                      &wrappedkeylen, genkeylocal, &genkeylen);
+    }
 
-        if (rc != ICC_OSSL_SUCCESS) {
-            if (wrappedKeyLocal != NULL) {
-                free(wrappedKeyLocal);
-            }
-            if (genkeylocal != NULL) {
-                free(genkeylocal);
-            }
-            ICC_EVP_PKEY_CTX_free(ockCtx, evp_pk);
-            throwOCKException(env, 0, "ICC_EVP_PKEY_encapsulate failed");
-            return;
-        }
+    randomKeyNative = (*env)->GetByteArrayElements(env, randomKey, NULL);
+    if (randomKeyNative == NULL) {
+        (*env)->ReleaseByteArrayElements(
+            env, wrappedKey, wrappedKeyNative, JNI_ABORT);
 
         ICC_EVP_PKEY_CTX_free(ockCtx, evp_pk);
 
-        jbyte *bytes = (*env)->GetByteArrayElements(env, wrappedKey, NULL);
-        memcpy(bytes, wrappedKeyLocal, wrappedkeylen);
-        (*env)->ReleaseByteArrayElements(env, wrappedKey, bytes, 0);
-
-        bytes = (*env)->GetByteArrayElements(env, randomKey, NULL);
-        memcpy(bytes, genkeylocal, genkeylen);
-        (*env)->ReleaseByteArrayElements(env, randomKey, bytes, 0);
-        if (wrappedKeyLocal != NULL) {
-            free(wrappedKeyLocal);
-        }
-        if (genkeylocal != NULL) {
-            free(genkeylocal);
-        }
+        throwOCKException(env, 0, "GetByteArrayElements failed for randomKey");
+        return;
     }
+
+    
+    rc = ICC_EVP_PKEY_encapsulate(ockCtx, evp_pk, (unsigned char *)wrappedKeyNative,,
+                                      &wrappedkeylen, (unsigned char *)randomKeyNative,, &genkeylen);
+
+    if (rc != ICC_OSSL_SUCCESS) {
+        (*env)->ReleaseByteArrayElements(env, wrappedKey, wrappedKeyNative, JNI_ABORT);
+        (*env)->ReleaseByteArrayElements(env, randomKey, randomKeyNative, JNI_ABORT);
+
+        ICC_EVP_PKEY_CTX_free(ockCtx, evp_pk);
+        throwOCKException(env, 0, "ICC_EVP_PKEY_encapsulate failed");
+        return;
+    }
+
+    /*
+     * Commit the generated values back to the Java arrays.
+     */
+    (*env)->ReleaseByteArrayElements(env, wrappedKey, wrappedKeyNative, 0);
+    (*env)->ReleaseByteArrayElements(env, randomKey, randomKeyNative, 0);
+    ICC_EVP_PKEY_CTX_free(ockCtx, evp_pk);
 }
 
 //============================================================================
