@@ -33,10 +33,21 @@ public final class ECKeyPairGenerator extends KeyPairGeneratorSpi {
 
     public ECKeyPairGenerator(OpenJCEPlusProvider provider) {
         this.provider = provider;
+        System.err.println("=== OJCP ECKeyPairGenerator CREATED ===");
+        System.err.println("provider = " + provider.getName());
+        System.err.println("legacyECdefault = " + legacyECdefault);
+        System.err.println("legacy property = "
+                + System.getProperty("openjceplus.ec.legacy.defaultKeysize"));
+        System.err.println("initial keysize = " + keysize);
+        System.err.println("oid = " + oid);
+        System.err.println("ecSpec = " + ecSpec);
     }
 
     @Override
     public void initialize(int keysize, SecureRandom random) throws InvalidParameterException {
+        System.err.println("=== OJCP EC initialize(int) ===");
+        System.err.println("requested keysize = " + keysize);
+        System.err.println("random = " + random);
         this.keysize = keysize;
         this.ecSpec = null;
         this.oid = null;
@@ -56,6 +67,11 @@ public final class ECKeyPairGenerator extends KeyPairGeneratorSpi {
      */
     public void initialize(AlgorithmParameterSpec params, SecureRandom random)
             throws InvalidAlgorithmParameterException {
+        System.err.println("=== OJCP EC initialize(spec) ===");
+        System.err.println("params = " + params);
+        System.err.println("params class = "
+                + (params == null ? "null" : params.getClass().getName()));
+        System.err.println("random = " + random);
         if (!(params instanceof ECParameterSpec)) {
             if (params instanceof ECGenParameterSpec) {
                 this.oid = ECNamedCurve.getOIDFromName(((ECGenParameterSpec) params).getName());
@@ -94,6 +110,10 @@ public final class ECKeyPairGenerator extends KeyPairGeneratorSpi {
         this.ecSpec = (ECParameterSpec) params;
         // this.random = OpenJCEPlus.getSecureRandom(random);
         this.keysize = ecSpec.getCurve().getField().getFieldSize();
+        System.err.println("after initialize:");
+        System.err.println("keysize = " + this.keysize);
+        System.err.println("oid = " + this.oid);
+        System.err.println("ecSpec = " + this.ecSpec);
     }
 
     /**
@@ -102,6 +122,14 @@ public final class ECKeyPairGenerator extends KeyPairGeneratorSpi {
 
     @Override
     public KeyPair generateKeyPair() {
+        System.err.println("=== OJCP EC generateKeyPair ===");
+        System.err.println("keysize = " + keysize);
+        System.err.println("oid = " + oid);
+        System.err.println("ecSpec = " + ecSpec);
+        System.err.println("cryptoRandom = " + cryptoRandom);
+        System.err.println("legacyECdefault = " + legacyECdefault);
+        System.err.println("legacy property = "
+                + System.getProperty("openjceplus.ec.legacy.defaultKeysize"));
 
         ECKey ecKey = null;
         // set cryptoRandom if initialize() method has been skipped
@@ -110,7 +138,9 @@ public final class ECKeyPairGenerator extends KeyPairGeneratorSpi {
         }
 
         try {
-
+            System.err.println(
+                "OJCP EC DEFAULT PATH: generating by keysize = "
+                        + this.keysize);
             if (this.oid != null) {
                 ecKey = ECKey.generateKeyPair(this.oid.toString(),
                         cryptoRandom, provider);
