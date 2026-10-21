@@ -251,8 +251,7 @@ public abstract class NativeOpenSSLAdapter implements NativeInterface {
 
     @Override
     public long getByteBufferPointer(ByteBuffer b) {
-        // return NativeOpenSSLImplementation.getByteBufferPointer(b);
-        throw new UnsupportedOperationException("getByteBufferPointer");
+        return NativeOpenSSLImplementation.getByteBufferPointer(b);
     }
 
     @Override
@@ -1089,8 +1088,7 @@ public abstract class NativeOpenSSLAdapter implements NativeInterface {
 
     @Override
     public long XECKEY_generate(int option, long bufferPtr) throws OpenSSLException {
-        // return NativeOpenSSLImplementation.XECKEY_generate(osslContext.getId(), option, bufferPtr);
-        throw new UnsupportedOperationException("XECKEY_generate");
+        return NativeOpenSSLImplementation.XECKEY_generate(osslContext.getId(), option, bufferPtr);
     }
 
     @Override
@@ -1119,8 +1117,7 @@ public abstract class NativeOpenSSLAdapter implements NativeInterface {
 
     @Override
     public long XECKEY_createPrivateKey(byte[] privateKeyBytes, long bufferPtr) throws OpenSSLException {
-        // return NativeOpenSSLImplementation.XECKEY_createPrivateKey(osslContext.getId(), privateKeyBytes, bufferPtr);
-        throw new UnsupportedOperationException("XECKEY_createPrivateKey");
+        return NativeOpenSSLImplementation.XECKEY_createPrivateKey(osslContext.getId(), privateKeyBytes, bufferPtr);
     }
 
     @Override
@@ -1131,8 +1128,7 @@ public abstract class NativeOpenSSLAdapter implements NativeInterface {
 
     @Override
     public long XECKEY_createPublicKey(byte[] publicKeyBytes) throws OpenSSLException {
-        // return NativeOpenSSLImplementation.XECKEY_createPublicKey(osslContext.getId(), publicKeyBytes);
-        throw new UnsupportedOperationException("XECKEY_createPublicKey");
+        return NativeOpenSSLImplementation.XECKEY_createPublicKey(osslContext.getId(), publicKeyBytes);
     }
 
     @Override
@@ -1149,8 +1145,7 @@ public abstract class NativeOpenSSLAdapter implements NativeInterface {
 
     @Override
     public byte[] XECKEY_getPrivateKeyBytes(long xecKeyId) throws OpenSSLException {
-        // return NativeOpenSSLImplementation.XECKEY_getPrivateKeyBytes(osslContext.getId(), xecKeyId);
-        throw new UnsupportedOperationException("XECKEY_getPrivateKeyBytes");
+        return NativeOpenSSLImplementation.XECKEY_getPrivateKeyBytes(osslContext.getId(), xecKeyId);
     }
 
     @Override
@@ -1161,8 +1156,7 @@ public abstract class NativeOpenSSLAdapter implements NativeInterface {
 
     @Override
     public byte[] XECKEY_getPublicKeyBytes(long xecKeyId) throws OpenSSLException {
-        // return NativeOpenSSLImplementation.XECKEY_getPublicKeyBytes(osslContext.getId(), xecKeyId);
-        throw new UnsupportedOperationException("XECKEY_getPublicKeyBytes");
+        return NativeOpenSSLImplementation.XECKEY_getPublicKeyBytes(osslContext.getId(), xecKeyId);
     }
 
     @Override
@@ -1179,8 +1173,7 @@ public abstract class NativeOpenSSLAdapter implements NativeInterface {
 
     @Override
     public void XECKEY_delete(long xecKeyId) throws OpenSSLException {
-        // NativeOpenSSLImplementation.XECKEY_delete(osslContext.getId(), xecKeyId);
-        throw new UnsupportedOperationException("XECKEY_delete");
+        NativeOpenSSLImplementation.XECKEY_delete(osslContext.getId(), xecKeyId);
     }
 
     @Override
@@ -1204,8 +1197,7 @@ public abstract class NativeOpenSSLAdapter implements NativeInterface {
     @Override
     public byte[] XECKEY_computeECDHSecret(long genCtx, long pubEcKeyId, long privEcKeyId)
             throws OpenSSLException {
-        // return NativeOpenSSLImplementation.XECKEY_computeECDHSecret(osslContext.getId(), genCtx, pubEcKeyId, privEcKeyId);
-        throw new UnsupportedOperationException("XECKEY_computeECDHSecret");
+        return NativeOpenSSLImplementation.XECKEY_computeECDHSecret(osslContext.getId(), genCtx, pubEcKeyId, privEcKeyId);
     }
 
     @Override
